@@ -24,5 +24,14 @@ alter default privileges in schema public
 alter default privileges in schema public
   grant all on sequences to anon, authenticated, service_role;
 
--- 4. Forget applied-migration history so migrations re-apply cleanly.
-delete from supabase_migrations.schema_migrations;
+-- 4. Forget applied-migration history so migrations re-apply cleanly (if the
+--    CLI migrations table exists at all).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.tables
+    where table_schema = 'supabase_migrations' and table_name = 'schema_migrations'
+  ) then
+    delete from supabase_migrations.schema_migrations;
+  end if;
+end $$;
