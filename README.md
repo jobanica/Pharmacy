@@ -140,8 +140,8 @@ supabase/
 ## Build order (milestones)
 
 1. **Foundation** ✅ — scaffold, Supabase clients, money/date helpers, app shell.
-2. Tenancy & auth — migrations, RLS, sign-up/login/invite, branch switcher.
-3. Catalog — categories, products, suppliers.
+2. **Tenancy & auth** ✅ — migrations, RLS, sign-up/login/invite, branch switcher.
+3. **Catalog** ✅ — categories, products, suppliers (CRUD + RLS + seed, barcode/SKU).
 4. Inventory core — batches, movements, on-hand views, FEFO.
 5. POS — cart, checkout transaction, receipt, void.
 6. Alerts — low-stock + expiry buckets, CSV export, write-off.

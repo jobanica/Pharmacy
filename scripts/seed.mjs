@@ -82,6 +82,43 @@ async function addMember(orgId, email, fullName, role, branchId) {
   return user.id;
 }
 
+async function seedCatalog(orgId, products, suppliers) {
+  // Categories: unique names referenced by products.
+  const catNames = [...new Set(products.map((p) => p.cat))];
+  const { data: cats, error: catErr } = await supabase
+    .from("categories")
+    .insert(catNames.map((name) => ({ organization_id: orgId, name })))
+    .select("id, name");
+  if (catErr) throw new Error(`seed categories: ${catErr.message}`);
+  const catId = new Map(cats.map((c) => [c.name, c.id]));
+
+  const { error: prodErr } = await supabase.from("products").insert(
+    products.map((p) => ({
+      organization_id: orgId,
+      category_id: catId.get(p.cat) ?? null,
+      name: p.name,
+      generic_name: p.generic ?? null,
+      sku: p.sku ?? null,
+      barcode: p.barcode ?? null,
+      unit: p.unit ?? "piece",
+      requires_prescription: p.rx ?? false,
+      reorder_point: p.reorder ?? 0,
+      default_price_centavos: p.price,
+      is_active: true,
+    })),
+  );
+  if (prodErr) throw new Error(`seed products: ${prodErr.message}`);
+
+  const { error: supErr } = await supabase
+    .from("suppliers")
+    .insert(suppliers.map((s) => ({ organization_id: orgId, ...s })));
+  if (supErr) throw new Error(`seed suppliers: ${supErr.message}`);
+
+  console.log(
+    `  catalog: ${catNames.length} categories, ${products.length} products, ${suppliers.length} suppliers`,
+  );
+}
+
 async function addPendingInvite(orgId, invitedBy, email, role) {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
   const expiresAt = new Date(Date.now() + 7 * 864e5).toISOString();
@@ -111,6 +148,29 @@ async function main() {
   await addMember(a.orgId, "pharmacist@mercuryrx.ph", "Pia Pharmacist", "pharmacist", annexId);
   await addMember(a.orgId, "cashier@mercuryrx.ph", "Cleo Cashier", "cashier", a.branchId);
   await addPendingInvite(a.orgId, a.userId, "newhire@mercuryrx.ph", "cashier");
+  await seedCatalog(
+    a.orgId,
+    [
+      { name: "Biogesic", generic: "Paracetamol 500mg", cat: "Analgesics", unit: "tablet", price: 350, reorder: 50, sku: "BG-500", barcode: "4800001110017" },
+      { name: "Alaxan FR", generic: "Ibuprofen + Paracetamol", cat: "Analgesics", unit: "tablet", price: 700, reorder: 40, sku: "AL-FR", barcode: "4800001110024" },
+      { name: "Neozep Forte", generic: "Phenylephrine + Chlorphenamine + Paracetamol", cat: "Respiratory", unit: "tablet", price: 680, reorder: 40, sku: "NZ-F" },
+      { name: "Bioflu", generic: "Phenylephrine + Chlorphenamine + Paracetamol", cat: "Respiratory", unit: "tablet", price: 850, reorder: 30, sku: "BF-10" },
+      { name: "Amoxil", generic: "Amoxicillin 500mg", cat: "Antibiotics", unit: "capsule", price: 1200, reorder: 60, rx: true, sku: "AMX-500" },
+      { name: "Cetirizine", generic: "Cetirizine 10mg", cat: "Antihistamines", unit: "tablet", price: 500, reorder: 30, sku: "CTZ-10" },
+      { name: "Losartan", generic: "Losartan 50mg", cat: "Cardiovascular", unit: "tablet", price: 900, reorder: 50, rx: true, sku: "LOS-50" },
+      { name: "Amlodipine", generic: "Amlodipine 5mg", cat: "Cardiovascular", unit: "tablet", price: 650, reorder: 50, rx: true, sku: "AML-5" },
+      { name: "Metformin", generic: "Metformin 500mg", cat: "Antidiabetic", unit: "tablet", price: 480, reorder: 60, rx: true, sku: "MET-500" },
+      { name: "Omeprazole", generic: "Omeprazole 20mg", cat: "Gastrointestinal", unit: "capsule", price: 1500, reorder: 30, sku: "OME-20" },
+      { name: "Ceelin Syrup", generic: "Ascorbic Acid (Vitamin C)", cat: "Vitamins & Supplements", unit: "bottle", price: 9500, reorder: 20, sku: "CEE-120" },
+      { name: "Enervon", generic: "Multivitamins", cat: "Vitamins & Supplements", unit: "tablet", price: 780, reorder: 40, sku: "ENV-1" },
+      { name: "Ventolin Nebule", generic: "Salbutamol", cat: "Respiratory", unit: "vial", price: 2500, reorder: 15, rx: true, sku: "VEN-NEB" },
+    ],
+    [
+      { name: "Zuellig Pharma", contact_person: "Rina Santos", phone: "+63 2 8888 1000", email: "orders@zuellig.example" },
+      { name: "Metro Drug Inc.", contact_person: "Jun Cruz", phone: "+63 2 8777 2000", email: "sales@metrodrug.example" },
+      { name: "MedExpress Distribution", contact_person: "Ana Reyes", phone: "+63 917 555 3000" },
+    ],
+  );
 
   // --- Organization B: GeneriCare (separate tenant, for isolation tests) ----
   const b = await ownerWithOrg(
@@ -119,7 +179,15 @@ async function main() {
     "GeneriCare Pharmacy",
     "Quezon City Branch",
   );
-  void b;
+  await seedCatalog(
+    b.orgId,
+    [
+      { name: "Paracetamol", generic: "Paracetamol 500mg", cat: "Analgesics", unit: "tablet", price: 120, reorder: 100, sku: "PCM-500" },
+      { name: "Amoxicillin", generic: "Amoxicillin 500mg", cat: "Antibiotics", unit: "capsule", price: 450, reorder: 80, rx: true, sku: "AMOX-500" },
+      { name: "Vitamin C", generic: "Ascorbic Acid 500mg", cat: "Vitamins & Supplements", unit: "tablet", price: 90, reorder: 120, sku: "VITC-500" },
+    ],
+    [{ name: "Generika Distribution", contact_person: "Leo Tan", phone: "+63 2 8123 4567" }],
+  );
 
   console.log("Done. Test accounts (password for all: %s):\n", DEV_PASSWORD);
   console.table(created.map((c) => ({ email: c.email, role: c.role })));

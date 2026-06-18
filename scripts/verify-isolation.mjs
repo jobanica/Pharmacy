@@ -73,6 +73,24 @@ async function main() {
       aMembers.every((m) => m.organization_id === aOrgs?.[0]?.id),
   );
 
+  // Catalog must not cross tenants.
+  const { data: aProducts } = await a
+    .from("products")
+    .select("organization_id");
+  const { data: bProducts } = await b
+    .from("products")
+    .select("organization_id");
+  check(
+    "Org A sees only its own products",
+    (aProducts?.length ?? 0) > 0 &&
+      aProducts.every((p) => p.organization_id === aOrgs?.[0]?.id),
+  );
+  check(
+    "Org B sees only its own products",
+    (bProducts?.length ?? 0) > 0 &&
+      bProducts.every((p) => p.organization_id === bOrgId),
+  );
+
   console.log(
     failures === 0
       ? "\nAll isolation checks passed."
