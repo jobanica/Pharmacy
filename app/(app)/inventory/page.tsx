@@ -10,21 +10,34 @@ export default async function InventoryPage() {
   const supabase = await createClient();
   const canManage = can(ctx.role, "manage_catalog");
 
-  const [{ data: products }, { data: categories }] = await Promise.all([
-    supabase
-      .from("products")
-      .select(
-        "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, categories(name)",
-      )
-      .order("name", { ascending: true }),
-    supabase.from("categories").select("id, name").order("name"),
-  ]);
+  const [{ data: products }, { data: categories }, { data: onHand }] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select(
+          "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, categories(name)",
+        )
+        .order("name", { ascending: true }),
+      supabase.from("categories").select("id, name").order("name"),
+      supabase
+        .from("v_product_on_hand")
+        .select("product_id, on_hand")
+        .eq("branch_id", ctx.activeBranchId),
+    ]);
+
+  const onHandById = new Map(
+    (onHand ?? []).map((r) => [r.product_id, r.on_hand ?? 0]),
+  );
 
   const rows: ProductWithCategory[] = (products ?? []).map((p) => {
     const { categories: cat, ...rest } = p as typeof p & {
       categories: { name: string } | null;
     };
-    return { ...rest, category_name: cat?.name ?? null };
+    return {
+      ...rest,
+      category_name: cat?.name ?? null,
+      on_hand: onHandById.get(rest.id) ?? 0,
+    };
   });
 
   // Product counts per category for the manager dialog.
@@ -41,7 +54,10 @@ export default async function InventoryPage() {
     <div>
       <PageHeader
         title="Inventory"
-        description="Your product catalog. Stock batches and movements arrive in Milestone 4."
+        description={`On-hand shown for ${
+          ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
+          "the active branch"
+        }. Open a product to receive stock, adjust, and view its history.`}
         action={canManage ? <CategoryManager categories={categoryList} /> : null}
       />
       <ProductsTable

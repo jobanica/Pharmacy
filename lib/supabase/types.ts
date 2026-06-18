@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      batches: {
+        Row: {
+          batch_number: string | null
+          branch_id: string
+          cost_centavos: number
+          created_at: string
+          expiry_date: string | null
+          id: string
+          organization_id: string
+          product_id: string
+          quantity: number
+          received_at: string
+          supplier_id: string | null
+        }
+        Insert: {
+          batch_number?: string | null
+          branch_id: string
+          cost_centavos?: number
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          organization_id: string
+          product_id: string
+          quantity?: number
+          received_at?: string
+          supplier_id?: string | null
+        }
+        Update: {
+          batch_number?: string | null
+          branch_id?: string
+          cost_centavos?: number
+          created_at?: string
+          expiry_date?: string | null
+          id?: string
+          organization_id?: string
+          product_id?: string
+          quantity?: number
+          received_at?: string
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string | null
@@ -77,6 +148,77 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          batch_id: string | null
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          organization_id: string
+          product_id: string
+          quantity_delta: number
+          reason: string | null
+          reference_id: string | null
+          type: Database["public"]["Enums"]["movement_type"]
+        }
+        Insert: {
+          batch_id?: string | null
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id: string
+          product_id: string
+          quantity_delta: number
+          reason?: string | null
+          reference_id?: string | null
+          type: Database["public"]["Enums"]["movement_type"]
+        }
+        Update: {
+          batch_id?: string | null
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          organization_id?: string
+          product_id?: string
+          quantity_delta?: number
+          reason?: string | null
+          reference_id?: string | null
+          type?: Database["public"]["Enums"]["movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -333,14 +475,59 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_product_on_hand: {
+        Row: {
+          branch_id: string | null
+          on_hand: number | null
+          organization_id: string | null
+          product_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: { Args: { invite_token: string }; Returns: string }
+      adjust_batch: {
+        Args: { p_batch: string; p_new_quantity: number; p_reason?: string }
+        Returns: undefined
+      }
       auth_org_id: { Args: never; Returns: string }
       auth_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      fefo_deduct: {
+        Args: {
+          p_branch: string
+          p_product: string
+          p_quantity: number
+          p_reason?: string
+          p_reference?: string
+          p_type: Database["public"]["Enums"]["movement_type"]
+        }
+        Returns: undefined
       }
       has_org_role: {
         Args: { roles: Database["public"]["Enums"]["user_role"][] }
@@ -354,11 +541,30 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      receive_stock: {
+        Args: {
+          p_batch_number?: string
+          p_branch: string
+          p_cost_centavos: number
+          p_expiry?: string
+          p_product: string
+          p_quantity: number
+          p_supplier?: string
+        }
+        Returns: string
+      }
       shares_org_with: { Args: { target: string }; Returns: boolean }
       slugify: { Args: { txt: string }; Returns: string }
     }
     Enums: {
       membership_status: "active" | "suspended"
+      movement_type:
+        | "receive"
+        | "sale"
+        | "adjustment"
+        | "void"
+        | "transfer"
+        | "expiry_writeoff"
       user_role: "owner" | "manager" | "pharmacist" | "cashier"
     }
     CompositeTypes: {
@@ -488,6 +694,14 @@ export const Constants = {
   public: {
     Enums: {
       membership_status: ["active", "suspended"],
+      movement_type: [
+        "receive",
+        "sale",
+        "adjustment",
+        "void",
+        "transfer",
+        "expiry_writeoff",
+      ],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
     },
   },
@@ -496,3 +710,4 @@ export const Constants = {
 // Convenience aliases used across the app (stable across regenerations).
 export type UserRole = Database["public"]["Enums"]["user_role"];
 export type MembershipStatus = Database["public"]["Enums"]["membership_status"];
+export type MovementType = Database["public"]["Enums"]["movement_type"];

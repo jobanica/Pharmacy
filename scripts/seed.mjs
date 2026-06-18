@@ -92,21 +92,24 @@ async function seedCatalog(orgId, products, suppliers) {
   if (catErr) throw new Error(`seed categories: ${catErr.message}`);
   const catId = new Map(cats.map((c) => [c.name, c.id]));
 
-  const { error: prodErr } = await supabase.from("products").insert(
-    products.map((p) => ({
-      organization_id: orgId,
-      category_id: catId.get(p.cat) ?? null,
-      name: p.name,
-      generic_name: p.generic ?? null,
-      sku: p.sku ?? null,
-      barcode: p.barcode ?? null,
-      unit: p.unit ?? "piece",
-      requires_prescription: p.rx ?? false,
-      reorder_point: p.reorder ?? 0,
-      default_price_centavos: p.price,
-      is_active: true,
-    })),
-  );
+  const { data: prodRows, error: prodErr } = await supabase
+    .from("products")
+    .insert(
+      products.map((p) => ({
+        organization_id: orgId,
+        category_id: catId.get(p.cat) ?? null,
+        name: p.name,
+        generic_name: p.generic ?? null,
+        sku: p.sku ?? null,
+        barcode: p.barcode ?? null,
+        unit: p.unit ?? "piece",
+        requires_prescription: p.rx ?? false,
+        reorder_point: p.reorder ?? 0,
+        default_price_centavos: p.price,
+        is_active: true,
+      })),
+    )
+    .select("id, name, reorder_point, default_price_centavos");
   if (prodErr) throw new Error(`seed products: ${prodErr.message}`);
 
   const { error: supErr } = await supabase
@@ -117,6 +120,50 @@ async function seedCatalog(orgId, products, suppliers) {
   console.log(
     `  catalog: ${catNames.length} categories, ${products.length} products, ${suppliers.length} suppliers`,
   );
+  return prodRows;
+}
+
+function dateOffset(days) {
+  return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+}
+
+// Seed stock batches (+ matching receive movements) so on-hand/expiry screens
+// have data. Spread expiries so Milestone 6 has expired / near-expiry examples,
+// and make a few products low-stock vs their reorder point.
+async function seedStock(orgId, branchId, products, { full = true } = {}) {
+  const expiryCycle = [400, 45, 20, -5, 300]; // far, ok, soon, expired, far
+  const list = full ? products : products.slice(0, 4);
+
+  const batches = list.map((p, i) => ({
+    organization_id: orgId,
+    branch_id: branchId,
+    product_id: p.id,
+    batch_number: `B${String(i + 1).padStart(3, "0")}`,
+    expiry_date: dateOffset(expiryCycle[i % expiryCycle.length]),
+    quantity: i % 4 === 0 ? Math.max(2, p.reorder_point - 3) : p.reorder_point + 20,
+    cost_centavos: Math.round(p.default_price_centavos * 0.6),
+  }));
+
+  const { data: rows, error: bErr } = await supabase
+    .from("batches")
+    .insert(batches)
+    .select("id, product_id, quantity");
+  if (bErr) throw new Error(`seed batches: ${bErr.message}`);
+
+  const { error: mErr } = await supabase.from("inventory_movements").insert(
+    rows.map((r) => ({
+      organization_id: orgId,
+      branch_id: branchId,
+      product_id: r.product_id,
+      batch_id: r.id,
+      type: "receive",
+      quantity_delta: r.quantity,
+      reason: "Initial stock",
+    })),
+  );
+  if (mErr) throw new Error(`seed movements: ${mErr.message}`);
+
+  console.log(`  stock: ${rows.length} batches at branch ${branchId.slice(0, 8)}…`);
 }
 
 async function addPendingInvite(orgId, invitedBy, email, role) {
@@ -148,7 +195,7 @@ async function main() {
   await addMember(a.orgId, "pharmacist@mercuryrx.ph", "Pia Pharmacist", "pharmacist", annexId);
   await addMember(a.orgId, "cashier@mercuryrx.ph", "Cleo Cashier", "cashier", a.branchId);
   await addPendingInvite(a.orgId, a.userId, "newhire@mercuryrx.ph", "cashier");
-  await seedCatalog(
+  const aProducts = await seedCatalog(
     a.orgId,
     [
       { name: "Biogesic", generic: "Paracetamol 500mg", cat: "Analgesics", unit: "tablet", price: 350, reorder: 50, sku: "BG-500", barcode: "4800001110017" },
@@ -171,6 +218,8 @@ async function main() {
       { name: "MedExpress Distribution", contact_person: "Ana Reyes", phone: "+63 917 555 3000" },
     ],
   );
+  await seedStock(a.orgId, a.branchId, aProducts);
+  await seedStock(a.orgId, annexId, aProducts, { full: false });
 
   // --- Organization B: GeneriCare (separate tenant, for isolation tests) ----
   const b = await ownerWithOrg(
@@ -179,7 +228,7 @@ async function main() {
     "GeneriCare Pharmacy",
     "Quezon City Branch",
   );
-  await seedCatalog(
+  const bProducts = await seedCatalog(
     b.orgId,
     [
       { name: "Paracetamol", generic: "Paracetamol 500mg", cat: "Analgesics", unit: "tablet", price: 120, reorder: 100, sku: "PCM-500" },
@@ -188,6 +237,7 @@ async function main() {
     ],
     [{ name: "Generika Distribution", contact_person: "Leo Tan", phone: "+63 2 8123 4567" }],
   );
+  await seedStock(b.orgId, b.branchId, bProducts);
 
   console.log("Done. Test accounts (password for all: %s):\n", DEV_PASSWORD);
   console.table(created.map((c) => ({ email: c.email, role: c.role })));

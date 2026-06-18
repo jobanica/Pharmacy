@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
 import { Pencil, Plus } from "lucide-react";
@@ -10,11 +11,15 @@ import { DataTable } from "@/components/data-table/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { ProductDialog, type ProductRow } from "./product-dialog";
 import { setProductActive } from "@/lib/catalog/actions";
 import { formatCentavos } from "@/lib/money";
 
-export type ProductWithCategory = ProductRow & { category_name: string | null };
+export type ProductWithCategory = ProductRow & {
+  category_name: string | null;
+  on_hand: number;
+};
 type CategoryOption = { id: string; name: string };
 
 function ActiveToggle({ product }: { product: ProductWithCategory }) {
@@ -45,7 +50,12 @@ function buildColumns(
       header: "Product",
       cell: ({ row }) => (
         <div>
-          <div className="font-medium">{row.original.name}</div>
+          <Link
+            href={`/inventory/${row.original.id}`}
+            className="font-medium hover:underline"
+          >
+            {row.original.name}
+          </Link>
           {row.original.generic_name ? (
             <div className="text-xs text-muted-foreground">
               {row.original.generic_name}
@@ -73,6 +83,25 @@ function buildColumns(
       accessorKey: "default_price_centavos",
       header: "Price",
       cell: ({ row }) => formatCentavos(row.original.default_price_centavos),
+    },
+    {
+      accessorKey: "on_hand",
+      header: "On hand",
+      cell: ({ row }) => {
+        const { on_hand, reorder_point } = row.original;
+        const low = reorder_point > 0 && on_hand <= reorder_point;
+        return (
+          <span
+            className={cn(
+              "font-medium",
+              low ? "text-amber-600 dark:text-amber-500" : undefined,
+            )}
+            title={low ? "At or below reorder point" : undefined}
+          >
+            {on_hand}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "reorder_point",
