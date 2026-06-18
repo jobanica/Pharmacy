@@ -1,4 +1,7 @@
-# Botika — Pharmacy Management (MVP)
+# Reseta — Pharmacy Management (MVP)
+
+<img src="public/reseta-logo.svg" alt="Reseta" width="220" />
+
 
 Multi-tenant SaaS for independent and small-to-mid Philippine pharmacies.
 Replaces paper logbooks and spreadsheets with cloud **POS**, batch-level
@@ -38,7 +41,7 @@ cp .env.example .env.local   # then fill in values
 | `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project / local API URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Anon key (subject to RLS) |
 | `SUPABASE_SERVICE_ROLE_KEY` | **server-only** | Bypasses RLS — never expose to the browser |
-| `NEXT_PUBLIC_APP_NAME` | public | Display name (default `Botika`) |
+| `NEXT_PUBLIC_APP_NAME` | public | Display name (default `Reseta`) |
 | `NEXT_PUBLIC_BILLING_ENABLED` | public | Billing feature flag, `false` in dev |
 | `PAYMONGO_SECRET_KEY` | server-only | Only needed when billing is enabled (M9) |
 | `PAYMONGO_WEBHOOK_SECRET` | server-only | PayMongo webhook signature secret (M9) |

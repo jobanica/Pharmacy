@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <defs>
+    <linearGradient id="reseta-icon-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2DD4BF" />
+      <stop offset="1" stop-color="#0F766E" />
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#reseta-icon-g)" />
+  <text x="24" y="33" text-anchor="middle" fill="#ffffff"
+    font-family="Georgia, 'Times New Roman', serif" font-size="26" font-weight="700">Rx</text>
+</svg>

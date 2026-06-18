@@ -16,7 +16,7 @@ const publicSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
-  NEXT_PUBLIC_APP_NAME: z.string().default("Botika"),
+  NEXT_PUBLIC_APP_NAME: z.string().default("Reseta"),
 });
 
 const serverSchema = z.object({

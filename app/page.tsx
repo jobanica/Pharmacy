@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  Pill,
   ShoppingCart,
   Package,
   CalendarClock,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { publicEnv } from "@/lib/env";
 
 const FEATURES = [
@@ -28,9 +28,7 @@ export default function LandingPage() {
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between px-6 py-4">
         <span className="flex items-center gap-2 font-semibold">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Pill className="size-4" />
-          </span>
+          <BrandMark className="size-8" />
           {appName}
         </span>
         <Button render={<Link href="/dashboard" />}>Open app</Button>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" width="240" height="64">
+  <defs>
+    <linearGradient id="reseta-logo-g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2DD4BF" />
+      <stop offset="1" stop-color="#0F766E" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="48" height="48" rx="14" fill="url(#reseta-logo-g)" />
+  <text x="32" y="42" text-anchor="middle" fill="#ffffff"
+    font-family="Georgia, 'Times New Roman', serif" font-size="27" font-weight="700">Rx</text>
+  <text x="72" y="34" fill="#0F172A"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    font-size="30" font-weight="700" letter-spacing="-0.5">Reseta</text>
+  <text x="73" y="50" fill="#64748B"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    font-size="11" font-weight="500" letter-spacing="0.5">PHARMACY MANAGEMENT</text>
+</svg>

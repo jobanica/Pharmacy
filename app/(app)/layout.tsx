@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Pill } from "lucide-react";
 
 import { requireAppContext } from "@/lib/auth/session";
 import { publicEnv } from "@/lib/env";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { UserMenu } from "@/components/shell/user-menu";
@@ -22,9 +22,7 @@ export default async function AppLayout({
           href="/dashboard"
           className="flex items-center gap-2 border-b px-5 py-4"
         >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Pill className="size-4" />
-          </span>
+          <BrandMark className="size-8" />
           <span className="font-semibold">{publicEnv.NEXT_PUBLIC_APP_NAME}</span>
         </Link>
         <div className="border-b px-5 py-2 text-xs text-muted-foreground">
