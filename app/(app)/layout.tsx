@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Pill } from "lucide-react";
 
-import { getAppContext } from "@/lib/auth/session";
+import { requireAppContext } from "@/lib/auth/session";
 import { publicEnv } from "@/lib/env";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
@@ -12,7 +12,7 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const ctx = await getAppContext();
+  const ctx = await requireAppContext();
 
   return (
     <div className="grid min-h-screen grid-rows-[auto_1fr] md:grid-cols-[256px_1fr] md:grid-rows-1">

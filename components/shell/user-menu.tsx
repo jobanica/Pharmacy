@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ROLE_LABELS, type Role } from "@/lib/auth/roles";
+import { signOutAction } from "@/lib/auth/actions";
 
 function initials(name: string): string {
   return name
@@ -58,11 +59,16 @@ export function UserMenu({
           <UserRound className="size-4" />
           Profile
         </DropdownMenuItem>
-        {/* TODO(Milestone 2): wire to Supabase auth signOut server action. */}
-        <DropdownMenuItem disabled>
-          <LogOut className="size-4" />
-          Sign out
-        </DropdownMenuItem>
+        <form action={signOutAction}>
+          <DropdownMenuItem
+            render={
+              <button type="submit" className="w-full cursor-default" />
+            }
+          >
+            <LogOut className="size-4" />
+            Sign out
+          </DropdownMenuItem>
+        </form>
       </DropdownMenuContent>
     </DropdownMenu>
   );

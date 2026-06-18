@@ -2,13 +2,13 @@ import { CalendarDays, Coins, Building2, ShieldCheck } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getAppContext } from "@/lib/auth/session";
+import { requireAppContext } from "@/lib/auth/session";
 import { ROLE_LABELS } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import { formatManila, manilaBusinessDay } from "@/lib/date";
 
 export default async function DashboardPage() {
-  const ctx = await getAppContext();
+  const ctx = await requireAppContext();
 
   // Foundation smoke test: prove the money + date helpers render correctly.
   const sampleRevenueCentavos = 1_234_550; // ₱12,345.50

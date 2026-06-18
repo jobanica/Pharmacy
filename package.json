@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed": "node --env-file=.env.local scripts/seed.mjs",
+    "verify:isolation": "node --env-file=.env.local scripts/verify-isolation.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

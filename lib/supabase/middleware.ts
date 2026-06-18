@@ -42,23 +42,21 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: do not run code between createServerClient and getUser().
   // Refreshing here keeps the auth cookie valid for Server Components.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // NOTE (Milestone 2): the auth redirect gate below is intentionally disabled
-  // until sign-in/sign-up are built, so the app shell is demoable in M1. Enable
-  // it once auth lands by uncommenting and removing this note.
-  //
-  // const { pathname } = request.nextUrl;
-  // const isPublic = PUBLIC_PATHS.some(
-  //   (p) => pathname === p || pathname.startsWith(`${p}/`),
-  // );
-  // if (!user && !isPublic) {
-  //   const url = request.nextUrl.clone();
-  //   url.pathname = "/sign-in";
-  //   url.searchParams.set("redirectTo", pathname);
-  //   return NextResponse.redirect(url);
-  // }
-  void PUBLIC_PATHS;
+  const { pathname } = request.nextUrl;
+  const isPublic =
+    pathname === "/" ||
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
+  if (!user && !isPublic) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    url.searchParams.set("redirectTo", pathname);
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }

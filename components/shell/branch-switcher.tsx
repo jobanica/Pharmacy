@@ -3,6 +3,8 @@
 import * as React from "react";
 import { Building2, Check, ChevronsUpDown } from "lucide-react";
 
+import { setActiveBranchAction } from "@/lib/auth/actions";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,9 +17,8 @@ import { Button } from "@/components/ui/button";
 import type { BranchSummary } from "@/lib/auth/session";
 
 /**
- * Branch switcher. In Milestone 2 selecting a branch persists the active branch
- * (cookie/server action) and refreshes branch-scoped data. For now it holds
- * local state so the control is interactive in the shell.
+ * Branch switcher. Selecting a branch persists it via a server action (cookie)
+ * and refreshes branch-scoped data. Single-branch users get a static label.
  */
 export function BranchSwitcher({
   branches,
@@ -27,12 +28,34 @@ export function BranchSwitcher({
   activeBranchId: string;
 }) {
   const [active, setActive] = React.useState(activeBranchId);
+  const [isPending, startTransition] = React.useTransition();
   const current = branches.find((b) => b.id === active) ?? branches[0];
+
+  function selectBranch(branchId: string) {
+    if (branchId === active) return;
+    setActive(branchId);
+    startTransition(() => setActiveBranchAction(branchId));
+  }
+
+  if (branches.length <= 1) {
+    return (
+      <span className="flex h-9 w-[200px] items-center gap-2 rounded-md border px-3 text-sm">
+        <Building2 className="size-4 shrink-0" />
+        <span className="truncate">{current?.name ?? "No branch"}</span>
+      </span>
+    );
+  }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button variant="outline" className="w-[200px] justify-between" />}
+        render={
+          <Button
+            variant="outline"
+            className="w-[200px] justify-between"
+            disabled={isPending}
+          />
+        }
       >
         <span className="flex items-center gap-2 truncate">
           <Building2 className="size-4 shrink-0" />
@@ -46,7 +69,7 @@ export function BranchSwitcher({
         {branches.map((branch) => (
           <DropdownMenuItem
             key={branch.id}
-            onSelect={() => setActive(branch.id)}
+            onSelect={() => selectBranch(branch.id)}
             className="justify-between"
           >
             {branch.name}

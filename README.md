@@ -49,24 +49,48 @@ cp .env.example .env.local   # then fill in values
 npm run dev      # http://localhost:3000
 ```
 
-### 4. Database (from Milestone 2)
+### 4. Database
+
+**Local stack:**
 
 ```bash
-supabase start           # boots local Postgres + Auth + Storage
-supabase db reset        # applies supabase/migrations + supabase/seed.sql
+supabase start                         # boots local Postgres + Auth + Storage
+supabase db reset                      # applies supabase/migrations
+npm run seed                           # creates the two demo orgs + users
+npm run verify:isolation               # proves tenant isolation via RLS
+```
+
+**Hosted project (rebuild from scratch):** with the database connection string
+exported as `SUPABASE_DB_URL`:
+
+```bash
+psql "$SUPABASE_DB_URL" -f scripts/reset.sql                 # DESTRUCTIVE wipe
+for f in supabase/migrations/*.sql; do psql "$SUPABASE_DB_URL" -f "$f"; done
+npm run seed
+npm run verify:isolation
 ```
 
 Regenerate typed DB types after schema changes:
 
 ```bash
-npx supabase gen types typescript --local > lib/supabase/types.ts
+npx supabase gen types typescript --linked > lib/supabase/types.ts
 ```
 
 ### Test accounts
 
-Seeded from Milestone 2 (one per role: owner, manager, pharmacist, cashier),
-across **two organizations** to demonstrate tenant isolation. Credentials will
-be listed here once the seed lands.
+Seeded across **two organizations** to demonstrate tenant isolation. Password
+for every account: `Password123!`
+
+| Organization | Email | Role |
+| --- | --- | --- |
+| MercuryRx Pharmacy | `owner@mercuryrx.ph` | owner |
+| MercuryRx Pharmacy | `manager@mercuryrx.ph` | manager |
+| MercuryRx Pharmacy | `pharmacist@mercuryrx.ph` | pharmacist (Annex branch) |
+| MercuryRx Pharmacy | `cashier@mercuryrx.ph` | cashier |
+| GeneriCare Pharmacy | `owner@genericare.ph` | owner |
+
+MercuryRx has two branches (Main, Annex) and one pending invitation; GeneriCare
+is a separate tenant used to verify that Org A cannot see Org B's data.
 
 ## Architecture overview
 

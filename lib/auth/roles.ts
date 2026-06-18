@@ -18,7 +18,8 @@ export const ROLE_LABELS: Record<Role, string> = {
 
 /** Capabilities derived from the Section 4 matrix. */
 export type Capability =
-  | "manage_org" // org, branches, members, billing
+  | "manage_org" // org, branches, billing (owner only)
+  | "manage_members" // invite/manage teammates (owner + manager)
   | "manage_catalog" // products, suppliers, purchase orders
   | "manage_stock" // adjust stock / receive batches
   | "create_sale" // POS
@@ -27,6 +28,7 @@ export type Capability =
 
 const MATRIX: Record<Capability, Role[]> = {
   manage_org: ["owner"],
+  manage_members: ["owner", "manager"],
   manage_catalog: ["owner", "manager", "pharmacist"],
   manage_stock: ["owner", "manager", "pharmacist"],
   create_sale: ["owner", "manager", "pharmacist", "cashier"],
