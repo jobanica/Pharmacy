@@ -1,0 +1,36 @@
+# Supabase local development configuration.
+# Run `supabase start` to boot a local Postgres + Auth + Storage stack, then
+# `supabase db reset` to apply migrations in supabase/migrations and run seed.sql.
+
+project_id = "pharmacy"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = ["http://127.0.0.1:3000"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+# Dev convenience: no email confirmation step required locally.
+enable_confirmations = false
+
+[storage]
+enabled = true

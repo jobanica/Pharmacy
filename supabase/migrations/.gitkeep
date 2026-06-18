@@ -1,0 +1,5 @@
+SQL migrations land here starting in Milestone 2 (tenancy & auth):
+  organizations, branches, profiles, memberships, invitations, RLS helpers + policies,
+then catalog, inventory, sales, purchase orders, billing, and dashboard views.
+
+Apply locally with: supabase db reset
