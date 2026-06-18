@@ -471,6 +471,136 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_items: {
+        Row: {
+          created_at: string
+          id: string
+          organization_id: string
+          product_id: string
+          purchase_order_id: string
+          quantity_ordered: number
+          quantity_received: number
+          unit_cost_centavos: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          organization_id: string
+          product_id: string
+          purchase_order_id: string
+          quantity_ordered: number
+          quantity_received?: number
+          unit_cost_centavos?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          organization_id?: string
+          product_id?: string
+          purchase_order_id?: string
+          quantity_ordered?: number
+          quantity_received?: number
+          unit_cost_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string | null
+          expected_date: string | null
+          id: string
+          notes: string | null
+          organization_id: string
+          po_number: string
+          status: Database["public"]["Enums"]["po_status"]
+          supplier_id: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          organization_id: string
+          po_number: string
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier_id?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string | null
+          expected_date?: string | null
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          po_number?: string
+          status?: Database["public"]["Enums"]["po_status"]
+          supplier_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sale_items: {
         Row: {
           batch_id: string | null
@@ -816,6 +946,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_purchase_order: {
+        Args: {
+          p_branch: string
+          p_expected_date?: string
+          p_items?: Json
+          p_notes?: string
+          p_supplier?: string
+        }
+        Returns: string
+      }
       fefo_deduct: {
         Args: {
           p_branch: string
@@ -838,6 +978,10 @@ export type Database = {
           organization_name: string
           role: Database["public"]["Enums"]["user_role"]
         }[]
+      }
+      receive_purchase_order: {
+        Args: { p_lines: Json; p_po: string }
+        Returns: undefined
       }
       receive_stock: {
         Args: {
@@ -869,6 +1013,7 @@ export type Database = {
         | "transfer"
         | "expiry_writeoff"
       payment_method: "cash"
+      po_status: "draft" | "sent" | "received" | "cancelled"
       sale_status: "completed" | "voided"
       user_role: "owner" | "manager" | "pharmacist" | "cashier"
     }
@@ -1008,6 +1153,7 @@ export const Constants = {
         "expiry_writeoff",
       ],
       payment_method: ["cash"],
+      po_status: ["draft", "sent", "received", "cancelled"],
       sale_status: ["completed", "voided"],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
     },
@@ -1020,3 +1166,4 @@ export type MembershipStatus = Database["public"]["Enums"]["membership_status"];
 export type MovementType = Database["public"]["Enums"]["movement_type"];
 export type SaleStatus = Database["public"]["Enums"]["sale_status"];
 export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
+export type PoStatus = Database["public"]["Enums"]["po_status"];

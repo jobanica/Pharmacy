@@ -145,6 +145,6 @@ supabase/
 4. **Inventory core** ✅ — batches, movements (audit log), on-hand view, receive/adjust, FEFO helper.
 5. **POS** ✅ — scan/search, cart, cash checkout (FEFO deduction), receipt, void.
 6. **Alerts** ✅ — low-stock + expiry buckets (≤30/≤60/≤90/expired), CSV export, write-off.
-7. Purchase orders — lifecycle + receive-into-batches.
+7. **Purchase orders** ✅ — draft→sent→received lifecycle, receive-into-batches, create-PO-from-low-stock.
 8. Dashboard — metrics, charts, date/branch filters.
 9. Billing scaffold + polish.

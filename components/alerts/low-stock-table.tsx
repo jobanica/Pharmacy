@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CsvExportButton } from "./csv-export-button";
+import { CreatePoButton } from "./create-po-button";
 
 export type LowStockRow = {
   product_id: string;
@@ -22,17 +23,21 @@ export type LowStockRow = {
 export function LowStockTable({
   rows,
   branchName,
+  canManage,
 }: {
   rows: LowStockRow[];
   branchName: string;
+  canManage: boolean;
 }) {
   return (
     <div className="grid gap-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {rows.length} product(s) at or below reorder point.
         </p>
-        <CsvExportButton
+        <div className="flex gap-2">
+          {canManage && rows.length > 0 ? <CreatePoButton /> : null}
+          <CsvExportButton
           rows={rows}
           filename={`low-stock-${branchName}.csv`}
           columns={[
@@ -42,7 +47,8 @@ export function LowStockTable({
             { header: "Reorder point", value: (r) => r.reorder_point },
             { header: "Suggested order", value: (r) => r.deficit },
           ]}
-        />
+          />
+        </div>
       </div>
       <div className="rounded-lg border">
         <Table>

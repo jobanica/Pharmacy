@@ -41,7 +41,7 @@ export default async function AlertsPage() {
           <TabsTrigger value="expiring">Expiring ({expRows.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="low" className="mt-4">
-          <LowStockTable rows={lowRows} branchName={branchName} />
+          <LowStockTable rows={lowRows} branchName={branchName} canManage={canManage} />
         </TabsContent>
         <TabsContent value="expiring" className="mt-4">
           <ExpiringTable rows={expRows} branchName={branchName} canManage={canManage} />
