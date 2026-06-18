@@ -122,6 +122,9 @@ declare
   v_org   uuid;
   v_batch uuid;
 begin
+  if not public.has_org_role(array['owner','manager','pharmacist']::public.user_role[]) then
+    raise exception 'You do not have permission to manage stock';
+  end if;
   if p_quantity is null or p_quantity <= 0 then
     raise exception 'Quantity must be a positive number';
   end if;
@@ -184,6 +187,9 @@ declare
   b      public.batches%rowtype;
   v_delta integer;
 begin
+  if not public.has_org_role(array['owner','manager','pharmacist']::public.user_role[]) then
+    raise exception 'You do not have permission to manage stock';
+  end if;
   if p_new_quantity is null or p_new_quantity < 0 then
     raise exception 'New quantity must be zero or more';
   end if;
@@ -233,6 +239,9 @@ declare
   v_take      integer;
   r           record;
 begin
+  if not public.has_org_role(array['owner','manager','pharmacist']::public.user_role[]) then
+    raise exception 'You do not have permission to manage stock';
+  end if;
   if p_quantity is null or p_quantity <= 0 then
     raise exception 'Quantity must be a positive number';
   end if;

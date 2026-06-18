@@ -63,6 +63,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
             foreignKeyName: "batches_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -75,6 +82,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "batches_supplier_id_fkey"
@@ -201,11 +215,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "inventory_movements_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_expiring_batches"
+            referencedColumns: ["batch_id"]
+          },
+          {
             foreignKeyName: "inventory_movements_branch_id_fkey"
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
           },
           {
             foreignKeyName: "inventory_movements_organization_id_fkey"
@@ -220,6 +248,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
           },
         ]
       }
@@ -302,6 +337,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "branches"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_default_branch_id_fkey"
+            columns: ["default_branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
           },
           {
             foreignKeyName: "memberships_organization_id_fkey"
@@ -475,6 +517,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sale_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "v_expiring_batches"
+            referencedColumns: ["batch_id"]
+          },
+          {
             foreignKeyName: "sale_items_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -487,6 +536,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
           },
           {
             foreignKeyName: "sale_items_sale_id_fkey"
@@ -558,6 +614,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
             foreignKeyName: "sales_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -612,6 +675,80 @@ export type Database = {
       }
     }
     Views: {
+      v_expiring_batches: {
+        Row: {
+          batch_id: string | null
+          batch_number: string | null
+          branch_id: string | null
+          branch_name: string | null
+          days_until: number | null
+          expiry_date: string | null
+          organization_id: string | null
+          product_id: string | null
+          product_name: string | null
+          quantity: number | null
+          unit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "batches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      v_low_stock: {
+        Row: {
+          branch_id: string | null
+          branch_name: string | null
+          deficit: number | null
+          on_hand: number | null
+          organization_id: string | null
+          product_id: string | null
+          product_name: string | null
+          reorder_point: number | null
+          unit: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_product_on_hand: {
         Row: {
           branch_id: string | null
@@ -628,6 +765,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "batches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
             foreignKeyName: "batches_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
@@ -640,6 +784,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
           },
         ]
       }
@@ -703,6 +854,10 @@ export type Database = {
       shares_org_with: { Args: { target: string }; Returns: boolean }
       slugify: { Args: { txt: string }; Returns: string }
       void_sale: { Args: { p_sale: string }; Returns: undefined }
+      write_off_batch: {
+        Args: { p_batch: string; p_reason?: string }
+        Returns: undefined
+      }
     }
     Enums: {
       membership_status: "active" | "suspended"
