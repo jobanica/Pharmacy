@@ -429,6 +429,143 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_items: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          id: string
+          line_total_centavos: number
+          organization_id: string
+          product_id: string
+          quantity: number
+          sale_id: string
+          unit_cost_centavos: number
+          unit_price_centavos: number
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          line_total_centavos: number
+          organization_id: string
+          product_id: string
+          quantity: number
+          sale_id: string
+          unit_cost_centavos?: number
+          unit_price_centavos: number
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          id?: string
+          line_total_centavos?: number
+          organization_id?: string
+          product_id?: string
+          quantity?: number
+          sale_id?: string
+          unit_cost_centavos?: number
+          unit_price_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          amount_tendered_centavos: number
+          branch_id: string
+          cashier_id: string | null
+          change_centavos: number
+          created_at: string
+          discount_centavos: number
+          id: string
+          organization_id: string
+          payment_method: Database["public"]["Enums"]["payment_method"]
+          receipt_number: string
+          status: Database["public"]["Enums"]["sale_status"]
+          subtotal_centavos: number
+          total_centavos: number
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          amount_tendered_centavos?: number
+          branch_id: string
+          cashier_id?: string | null
+          change_centavos?: number
+          created_at?: string
+          discount_centavos?: number
+          id?: string
+          organization_id: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          receipt_number: string
+          status?: Database["public"]["Enums"]["sale_status"]
+          subtotal_centavos?: number
+          total_centavos?: number
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          amount_tendered_centavos?: number
+          branch_id?: string
+          cashier_id?: string | null
+          change_centavos?: number
+          created_at?: string
+          discount_centavos?: number
+          id?: string
+          organization_id?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"]
+          receipt_number?: string
+          status?: Database["public"]["Enums"]["sale_status"]
+          subtotal_centavos?: number
+          total_centavos?: number
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -518,6 +655,16 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      complete_sale: {
+        Args: {
+          p_amount_tendered_centavos?: number
+          p_branch: string
+          p_discount_centavos?: number
+          p_items: Json
+          p_payment_method?: Database["public"]["Enums"]["payment_method"]
+        }
+        Returns: string
+      }
       fefo_deduct: {
         Args: {
           p_branch: string
@@ -555,6 +702,7 @@ export type Database = {
       }
       shares_org_with: { Args: { target: string }; Returns: boolean }
       slugify: { Args: { txt: string }; Returns: string }
+      void_sale: { Args: { p_sale: string }; Returns: undefined }
     }
     Enums: {
       membership_status: "active" | "suspended"
@@ -565,6 +713,8 @@ export type Database = {
         | "void"
         | "transfer"
         | "expiry_writeoff"
+      payment_method: "cash"
+      sale_status: "completed" | "voided"
       user_role: "owner" | "manager" | "pharmacist" | "cashier"
     }
     CompositeTypes: {
@@ -702,6 +852,8 @@ export const Constants = {
         "transfer",
         "expiry_writeoff",
       ],
+      payment_method: ["cash"],
+      sale_status: ["completed", "voided"],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
     },
   },
@@ -711,3 +863,5 @@ export const Constants = {
 export type UserRole = Database["public"]["Enums"]["user_role"];
 export type MembershipStatus = Database["public"]["Enums"]["membership_status"];
 export type MovementType = Database["public"]["Enums"]["movement_type"];
+export type SaleStatus = Database["public"]["Enums"]["sale_status"];
+export type PaymentMethod = Database["public"]["Enums"]["payment_method"];

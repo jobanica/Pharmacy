@@ -143,7 +143,7 @@ supabase/
 2. **Tenancy & auth** ✅ — migrations, RLS, sign-up/login/invite, branch switcher.
 3. **Catalog** ✅ — categories, products, suppliers (CRUD + RLS + seed, barcode/SKU).
 4. **Inventory core** ✅ — batches, movements (audit log), on-hand view, receive/adjust, FEFO helper.
-5. POS — cart, checkout transaction, receipt, void.
+5. **POS** ✅ — scan/search, cart, cash checkout (FEFO deduction), receipt, void.
 6. Alerts — low-stock + expiry buckets, CSV export, write-off.
 7. Purchase orders — lifecycle + receive-into-batches.
 8. Dashboard — metrics, charts, date/branch filters.
