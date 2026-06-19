@@ -40,6 +40,11 @@ export function formatManila(
   return formatInTimeZone(d, MANILA_TZ, pattern);
 }
 
+/** A date `n` days before now as `yyyy-MM-dd` (used for default report ranges). */
+export function isoDaysAgo(n: number): string {
+  return new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+}
+
 /** Whole days from now (Manila) until a date-only `yyyy-MM-dd` (e.g. expiry). */
 export function daysUntil(dateOnly: string): number {
   const today = new Date(`${manilaBusinessDay()}T00:00:00Z`).getTime();

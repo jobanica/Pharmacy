@@ -166,6 +166,98 @@ async function seedStock(orgId, branchId, products, { full = true } = {}) {
   console.log(`  stock: ${rows.length} batches at branch ${branchId.slice(0, 8)}…`);
 }
 
+function shuffle(a) {
+  const x = [...a];
+  for (let i = x.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [x[i], x[j]] = [x[j], x[i]];
+  }
+  return x;
+}
+
+// Seed completed sales spread across the last 30 days so the dashboard has
+// revenue-over-time, top products, and profit to chart. Direct inserts (with
+// backdated created_at) mirror what complete_sale does.
+async function seedSales(orgId, branchId, cashierId, count) {
+  const { data: prods } = await supabase
+    .from("products")
+    .select("id, default_price_centavos")
+    .eq("organization_id", orgId);
+  const priceById = new Map(prods.map((p) => [p.id, p.default_price_centavos]));
+
+  const { data: batches } = await supabase
+    .from("batches")
+    .select("id, product_id, quantity, cost_centavos")
+    .eq("branch_id", branchId)
+    .gt("quantity", 0);
+
+  const byProduct = new Map();
+  for (const b of batches ?? []) {
+    if (!byProduct.has(b.product_id)) byProduct.set(b.product_id, []);
+    byProduct.get(b.product_id).push({ ...b });
+  }
+  const productIds = [...byProduct.keys()];
+  if (productIds.length === 0) return;
+
+  const sales = [], items = [], movements = [];
+  const batchUpdates = new Map();
+  let receipt = 0;
+
+  for (let n = 0; n < count; n++) {
+    const dayOffset = Math.floor(Math.random() * 30);
+    const created = new Date(
+      Date.now() - dayOffset * 86_400_000 - Math.floor(Math.random() * 8 * 3_600_000),
+    ).toISOString();
+    const lines = [];
+    let subtotal = 0;
+    const saleId = crypto.randomUUID();
+
+    for (const pid of shuffle(productIds).slice(0, 1 + Math.floor(Math.random() * 2))) {
+      const batch = byProduct.get(pid).find((b) => b.quantity > 0);
+      if (!batch) continue;
+      const qty = Math.min(1 + Math.floor(Math.random() * 3), batch.quantity);
+      if (qty <= 0) continue;
+      batch.quantity -= qty;
+      batchUpdates.set(batch.id, batch.quantity);
+      const price = priceById.get(pid) ?? 0;
+      subtotal += price * qty;
+      lines.push({
+        organization_id: orgId, sale_id: saleId, product_id: pid, batch_id: batch.id,
+        quantity: qty, unit_price_centavos: price, line_total_centavos: price * qty,
+        unit_cost_centavos: batch.cost_centavos,
+      });
+      movements.push({
+        organization_id: orgId, branch_id: branchId, product_id: pid, batch_id: batch.id,
+        type: "sale", quantity_delta: -qty, reference_id: saleId, reason: "Sale",
+        created_by: cashierId, created_at: created,
+      });
+    }
+    if (lines.length === 0) continue;
+    receipt++;
+    const tendered = Math.max(Math.ceil(subtotal / 10000) * 10000, subtotal);
+    sales.push({
+      id: saleId, organization_id: orgId, branch_id: branchId,
+      receipt_number: String(receipt).padStart(6, "0"), cashier_id: cashierId,
+      subtotal_centavos: subtotal, discount_centavos: 0, total_centavos: subtotal,
+      payment_method: "cash", amount_tendered_centavos: tendered,
+      change_centavos: tendered - subtotal, status: "completed", created_at: created,
+    });
+    items.push(...lines);
+  }
+
+  if (sales.length) {
+    for (const [table, rows] of [["sales", sales], ["sale_items", items], ["inventory_movements", movements]]) {
+      const { error } = await supabase.from(table).insert(rows);
+      if (error) throw new Error(`seed ${table}: ${error.message}`);
+    }
+    for (const [id, qty] of batchUpdates) {
+      const { error } = await supabase.from("batches").update({ quantity: qty }).eq("id", id);
+      if (error) throw new Error(`seed batch update: ${error.message}`);
+    }
+  }
+  console.log(`  sales: ${sales.length} at branch ${branchId.slice(0, 8)}…`);
+}
+
 async function addPendingInvite(orgId, invitedBy, email, role) {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
   const expiresAt = new Date(Date.now() + 7 * 864e5).toISOString();
@@ -193,7 +285,7 @@ async function main() {
   const annexId = await addBranch(a.orgId, "Annex Branch");
   await addMember(a.orgId, "manager@mercuryrx.ph", "Mark Manager", "manager", a.branchId);
   await addMember(a.orgId, "pharmacist@mercuryrx.ph", "Pia Pharmacist", "pharmacist", annexId);
-  await addMember(a.orgId, "cashier@mercuryrx.ph", "Cleo Cashier", "cashier", a.branchId);
+  const cashierAId = await addMember(a.orgId, "cashier@mercuryrx.ph", "Cleo Cashier", "cashier", a.branchId);
   await addPendingInvite(a.orgId, a.userId, "newhire@mercuryrx.ph", "cashier");
   const aProducts = await seedCatalog(
     a.orgId,
@@ -220,6 +312,8 @@ async function main() {
   );
   await seedStock(a.orgId, a.branchId, aProducts);
   await seedStock(a.orgId, annexId, aProducts, { full: false });
+  await seedSales(a.orgId, a.branchId, cashierAId, 36);
+  await seedSales(a.orgId, annexId, cashierAId, 12);
 
   // --- Organization B: GeneriCare (separate tenant, for isolation tests) ----
   const b = await ownerWithOrg(
@@ -238,6 +332,7 @@ async function main() {
     [{ name: "Generika Distribution", contact_person: "Leo Tan", phone: "+63 2 8123 4567" }],
   );
   await seedStock(b.orgId, b.branchId, bProducts);
+  await seedSales(b.orgId, b.branchId, b.userId, 10);
 
   console.log("Done. Test accounts (password for all: %s):\n", DEV_PASSWORD);
   console.table(created.map((c) => ({ email: c.email, role: c.role })));

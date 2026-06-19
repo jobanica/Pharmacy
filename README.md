@@ -146,5 +146,5 @@ supabase/
 5. **POS** ✅ — scan/search, cart, cash checkout (FEFO deduction), receipt, void.
 6. **Alerts** ✅ — low-stock + expiry buckets (≤30/≤60/≤90/expired), CSV export, write-off.
 7. **Purchase orders** ✅ — draft→sent→received lifecycle, receive-into-batches, create-PO-from-low-stock.
-8. Dashboard — metrics, charts, date/branch filters.
+8. **Dashboard** ✅ — revenue/profit/transactions/items cards, charts, date + branch filters.
 9. Billing scaffold + polish.
