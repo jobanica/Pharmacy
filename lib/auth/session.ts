@@ -28,7 +28,7 @@ export type BranchSummary = {
 
 export type AppContext = {
   user: { id: string; fullName: string; email: string };
-  organization: { id: string; name: string };
+  organization: { id: string; name: string; plan: string };
   role: Role;
   branches: BranchSummary[];
   activeBranchId: string;
@@ -54,7 +54,7 @@ export const getAppContext = cache(
     const [{ data: membership }, { data: branches }] = await Promise.all([
       supabase
         .from("memberships")
-        .select("role, default_branch_id, organization_id, organizations(id, name)")
+        .select("role, default_branch_id, organization_id, organizations(id, name, plan)")
         .eq("user_id", user.id)
         .eq("status", "active")
         .maybeSingle(),
@@ -72,6 +72,7 @@ export const getAppContext = cache(
     const org = membership.organizations as unknown as {
       id: string;
       name: string;
+      plan: string;
     };
 
     // Pharmacists/cashiers are limited to their assigned branch.
@@ -98,7 +99,7 @@ export const getAppContext = cache(
         "User",
       email: user.email ?? "",
     },
-    organization: { id: org.id, name: org.name },
+    organization: { id: org.id, name: org.name, plan: org.plan },
     role,
     branches: accessible,
     activeBranchId,

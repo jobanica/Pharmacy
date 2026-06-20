@@ -261,6 +261,24 @@ async function seedSales(orgId, branchId, cashierId, count) {
   console.log(`  sales: ${sales.length} at branch ${branchId.slice(0, 8)}…`);
 }
 
+async function seedAttendance(orgId, branchId, userIds) {
+  const at = (dayOffset, hour) => {
+    const d = new Date();
+    d.setDate(d.getDate() - dayOffset);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  };
+  const rows = [];
+  for (const uid of userIds) {
+    rows.push({ organization_id: orgId, branch_id: branchId, user_id: uid, kind: "clock_in", created_at: at(1, 9) });
+    rows.push({ organization_id: orgId, branch_id: branchId, user_id: uid, kind: "clock_out", created_at: at(1, 18) });
+    rows.push({ organization_id: orgId, branch_id: branchId, user_id: uid, kind: "clock_in", created_at: at(0, 9) });
+  }
+  const { error } = await supabase.from("attendance").insert(rows);
+  if (error) throw new Error(`seed attendance: ${error.message}`);
+  console.log(`  attendance: ${rows.length} records`);
+}
+
 async function addPendingInvite(orgId, invitedBy, email, role) {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
   const expiresAt = new Date(Date.now() + 7 * 864e5).toISOString();
@@ -286,7 +304,7 @@ async function main() {
     "Main Branch",
   );
   const annexId = await addBranch(a.orgId, "Annex Branch");
-  await addMember(a.orgId, "manager@mercuryrx.ph", "Mark Manager", "manager", a.branchId);
+  const managerAId = await addMember(a.orgId, "manager@mercuryrx.ph", "Mark Manager", "manager", a.branchId);
   await addMember(a.orgId, "pharmacist@mercuryrx.ph", "Pia Pharmacist", "pharmacist", annexId);
   const cashierAId = await addMember(a.orgId, "cashier@mercuryrx.ph", "Cleo Cashier", "cashier", a.branchId);
   await addPendingInvite(a.orgId, a.userId, "newhire@mercuryrx.ph", "cashier");
@@ -317,6 +335,10 @@ async function main() {
   await seedStock(a.orgId, annexId, aProducts, { full: false });
   await seedSales(a.orgId, a.branchId, cashierAId, 36);
   await seedSales(a.orgId, annexId, cashierAId, 12);
+  // MercuryRx is on Pro so the HRIS module is unlocked in the demo.
+  await supabase.from("organizations").update({ plan: "pro" }).eq("id", a.orgId);
+  await supabase.from("subscriptions").update({ plan: "pro" }).eq("organization_id", a.orgId);
+  await seedAttendance(a.orgId, a.branchId, [a.userId, managerAId, cashierAId]);
 
   // --- Organization B: GeneriCare (separate tenant, for isolation tests) ----
   const b = await ownerWithOrg(

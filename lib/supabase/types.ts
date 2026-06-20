@@ -14,6 +14,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          organization_id: string
+          photo_path: string | null
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["attendance_kind"]
+          organization_id: string
+          photo_path?: string | null
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["attendance_kind"]
+          organization_id?: string
+          photo_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "attendance_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batches: {
         Row: {
           batch_number: string | null
@@ -102,6 +154,7 @@ export type Database = {
       branches: {
         Row: {
           address: string | null
+          clock_token: string
           created_at: string
           id: string
           is_active: boolean
@@ -111,6 +164,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          clock_token?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -120,6 +174,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          clock_token?: string
           created_at?: string
           id?: string
           is_active?: boolean
@@ -1048,6 +1103,7 @@ export type Database = {
       }
     }
     Enums: {
+      attendance_kind: "clock_in" | "clock_out"
       membership_status: "active" | "suspended"
       movement_type:
         | "receive"
@@ -1187,6 +1243,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      attendance_kind: ["clock_in", "clock_out"],
       membership_status: ["active", "suspended"],
       movement_type: [
         "receive",
@@ -1211,3 +1268,4 @@ export type MovementType = Database["public"]["Enums"]["movement_type"];
 export type SaleStatus = Database["public"]["Enums"]["sale_status"];
 export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
 export type PoStatus = Database["public"]["Enums"]["po_status"];
+export type AttendanceKind = Database["public"]["Enums"]["attendance_kind"];

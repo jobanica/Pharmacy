@@ -37,10 +37,20 @@ export const PLANS: Plan[] = [
     priceCentavos: 149900,
     interval: "month",
     description: "For multi-branch operations.",
-    features: ["Unlimited branches", "Priority support", "Advanced reports", "Data export"],
+    features: [
+      "Unlimited branches",
+      "HRIS — QR time & attendance",
+      "Advanced reports",
+      "Priority support",
+    ],
   },
 ];
 
 export function getPlan(id: string): Plan | undefined {
   return PLANS.find((p) => p.id === id);
+}
+
+/** Whether a plan unlocks Pro-only features (e.g. HRIS). */
+export function isProPlan(plan: string): boolean {
+  return plan === "pro";
 }
