@@ -223,28 +223,37 @@ export type Database = {
       }
       customers: {
         Row: {
+          address: string | null
+          birthdate: string | null
           created_at: string
           email: string | null
           id: string
           name: string
+          notes: string | null
           organization_id: string
           phone: string | null
           points_balance: number
         }
         Insert: {
+          address?: string | null
+          birthdate?: string | null
           created_at?: string
           email?: string | null
           id?: string
           name: string
+          notes?: string | null
           organization_id: string
           phone?: string | null
           points_balance?: number
         }
         Update: {
+          address?: string | null
+          birthdate?: string | null
           created_at?: string
           email?: string | null
           id?: string
           name?: string
+          notes?: string | null
           organization_id?: string
           phone?: string | null
           points_balance?: number
