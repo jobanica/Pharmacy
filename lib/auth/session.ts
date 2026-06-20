@@ -12,6 +12,7 @@ import "server-only";
  * The active branch is persisted in the `active_branch` cookie and validated
  * against the accessible set on every load.
  */
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -36,51 +37,50 @@ export type AppContext = {
 /**
  * Returns the signed-in user's app context, or `null` when unauthenticated or
  * not yet attached to an organization (e.g. an invited user who hasn't accepted).
+ *
+ * Wrapped in React `cache()` so the layout and page in a single request share
+ * one resolution (one getUser + one membership/branches fetch) instead of
+ * re-querying. Membership and branches run in parallel; both are RLS-scoped.
  */
-export async function getAppContext(): Promise<AppContext | null> {
-  const supabase = await createClient();
+export const getAppContext = cache(
+  async (): Promise<AppContext | null> => {
+    const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
 
-  const { data: membership } = await supabase
-    .from("memberships")
-    .select(
-      "role, default_branch_id, organization_id, organizations(id, name)",
-    )
-    .eq("user_id", user.id)
-    .eq("status", "active")
-    .maybeSingle();
+    const [{ data: membership }, { data: branches }] = await Promise.all([
+      supabase
+        .from("memberships")
+        .select("role, default_branch_id, organization_id, organizations(id, name)")
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .maybeSingle(),
+      // RLS already restricts branches to the caller's org.
+      supabase
+        .from("branches")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("created_at", { ascending: true }),
+    ]);
 
-  if (!membership || !membership.organizations) return null;
+    if (!membership || !membership.organizations) return null;
 
-  const role = membership.role as Role;
-  const org = membership.organizations as unknown as {
-    id: string;
-    name: string;
-  };
+    const role = membership.role as Role;
+    const org = membership.organizations as unknown as {
+      id: string;
+      name: string;
+    };
 
-  // RLS already restricts branches to the caller's org.
-  let branchQuery = supabase
-    .from("branches")
-    .select("id, name")
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
+    // Pharmacists/cashiers are limited to their assigned branch.
+    const accessible: BranchSummary[] =
+      (role === "pharmacist" || role === "cashier") && membership.default_branch_id
+        ? (branches ?? []).filter((b) => b.id === membership.default_branch_id)
+        : (branches ?? []);
 
-  // Pharmacists/cashiers are limited to their assigned branch.
-  if (
-    (role === "pharmacist" || role === "cashier") &&
-    membership.default_branch_id
-  ) {
-    branchQuery = branchQuery.eq("id", membership.default_branch_id);
-  }
-
-  const { data: branches } = await branchQuery;
-  const accessible: BranchSummary[] = branches ?? [];
-
-  if (accessible.length === 0) return null;
+    if (accessible.length === 0) return null;
 
   const cookieStore = await cookies();
   const cookieBranch = cookieStore.get(ACTIVE_BRANCH_COOKIE)?.value;
@@ -103,7 +103,7 @@ export async function getAppContext(): Promise<AppContext | null> {
     branches: accessible,
     activeBranchId,
   };
-}
+});
 
 /**
  * Like {@link getAppContext} but redirects to sign-in when there is no context.
