@@ -8,11 +8,14 @@ import {
   Building2,
   ArrowRight,
   CircleAlert,
+  Check,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { publicEnv } from "@/lib/env";
+import { PLANS } from "@/lib/billing/plans";
+import { formatCentavos } from "@/lib/money";
 
 const BENEFITS = [
   {
@@ -65,7 +68,15 @@ export default function LandingPage() {
           <BrandMark className="size-8" />
           <span className="text-lg tracking-tight">{appName}</span>
         </span>
-        <Button render={<Link href="/dashboard" />}>Open app</Button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="#pricing"
+            className="hidden rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground sm:inline-block"
+          >
+            Pricing
+          </Link>
+          <Button render={<Link href="/dashboard" />}>Open app</Button>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col">
@@ -179,6 +190,66 @@ export default function LandingPage() {
               );
             })}
           </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="mx-auto w-full max-w-6xl px-6 pb-24">
+          <h2 className="text-center text-2xl font-semibold tracking-tight">
+            Simple pricing that grows with you
+          </h2>
+          <p className="mx-auto mt-2 max-w-2xl text-center text-sm text-muted-foreground">
+            Start free. Upgrade when you add branches and staff. Prices in ₱ per
+            month.
+          </p>
+          <div className="mx-auto mt-10 grid max-w-4xl gap-5 sm:grid-cols-3">
+            {PLANS.map((plan) => {
+              const popular = plan.id === "starter";
+              return (
+                <div
+                  key={plan.id}
+                  className={`relative flex flex-col rounded-2xl border p-6 backdrop-blur-xl ${
+                    popular
+                      ? "border-fuchsia-400/40 bg-gradient-to-br from-violet-600/20 to-fuchsia-500/15 shadow-lg shadow-fuchsia-600/10"
+                      : "border-white/10 bg-white/[0.04]"
+                  }`}
+                >
+                  {popular ? (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-3 py-1 text-xs font-medium text-white">
+                      Most popular
+                    </span>
+                  ) : null}
+                  <h3 className="font-semibold">{plan.name}</h3>
+                  <div className="mt-2 flex items-end gap-1">
+                    <span className="text-3xl font-bold">
+                      {plan.priceCentavos === 0 ? "Free" : formatCentavos(plan.priceCentavos)}
+                    </span>
+                    {plan.priceCentavos > 0 ? (
+                      <span className="pb-1 text-sm text-muted-foreground">/mo</span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
+                  <ul className="mt-4 grid flex-1 gap-2 text-sm">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2">
+                        <Check className="size-4 shrink-0 text-teal-300" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="mt-6 w-full"
+                    variant={popular ? "default" : "outline"}
+                    render={<Link href="/sign-up" />}
+                  >
+                    {plan.priceCentavos === 0 ? "Start free" : `Choose ${plan.name}`}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            14-day free trial on paid plans · No card required · Cancel anytime
+          </p>
         </section>
 
         {/* CTA band */}
