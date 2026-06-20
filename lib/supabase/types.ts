@@ -759,6 +759,50 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          id: string
+          organization_id: string
+          plan: string
+          status: string
+          xendit_customer_id: string | null
+          xendit_plan_id: string | null
+          xendit_subscription_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          organization_id: string
+          plan?: string
+          status?: string
+          xendit_customer_id?: string | null
+          xendit_plan_id?: string | null
+          xendit_subscription_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          organization_id?: string
+          plan?: string
+          status?: string
+          xendit_customer_id?: string | null
+          xendit_plan_id?: string | null
+          xendit_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null

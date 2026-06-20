@@ -21,10 +21,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InviteForm } from "@/components/settings/invite-form";
 import { CopyInviteLink } from "@/components/settings/copy-invite-link";
+import { BillingSection } from "@/components/settings/billing-section";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can, ROLE_LABELS, type Role } from "@/lib/auth/roles";
 import { revokeInviteAction } from "@/lib/settings/actions";
+import { getSubscription, isBillingEnabled } from "@/lib/billing/service";
 import { formatManila } from "@/lib/date";
 
 export default async function SettingsPage() {
@@ -47,6 +49,8 @@ export default async function SettingsPage() {
   const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
 
   const canManageMembers = can(ctx.role, "manage_members");
+  const isOwner = ctx.role === "owner";
+  const subscription = isOwner ? await getSubscription() : null;
 
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
@@ -171,6 +175,14 @@ export default async function SettingsPage() {
             ) : null}
           </CardContent>
         </Card>
+      ) : null}
+
+      {isOwner ? (
+        <BillingSection
+          currentPlan={subscription?.plan ?? "free"}
+          status={subscription?.status ?? "active"}
+          enabled={isBillingEnabled()}
+        />
       ) : null}
     </div>
   );

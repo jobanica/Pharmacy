@@ -6,6 +6,7 @@ import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { UserMenu } from "@/components/shell/user-menu";
+import { MobileNav } from "@/components/shell/mobile-nav";
 
 export default async function AppLayout({
   children,
@@ -35,9 +36,11 @@ export default async function AppLayout({
       <div className="flex min-w-0 flex-col">
         <header className="flex items-center justify-between gap-4 border-b bg-card px-4 py-3 md:px-6">
           <div className="flex items-center gap-3">
-            <span className="font-semibold md:hidden">
-              {publicEnv.NEXT_PUBLIC_APP_NAME}
-            </span>
+            <MobileNav
+              role={ctx.role}
+              appName={publicEnv.NEXT_PUBLIC_APP_NAME}
+              orgName={ctx.organization.name}
+            />
             <BranchSwitcher
               branches={ctx.branches}
               activeBranchId={ctx.activeBranchId}

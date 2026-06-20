@@ -22,9 +22,9 @@ const publicSchema = z.object({
 const serverSchema = z.object({
   // Service role key — server-only, bypasses RLS. Guard its usage carefully.
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
-  // PayMongo (subscription scaffold). Optional in dev so the app boots without it.
-  PAYMONGO_SECRET_KEY: z.string().optional(),
-  PAYMONGO_WEBHOOK_SECRET: z.string().optional(),
+  // Xendit (subscription scaffold). Optional in dev so the app boots without it.
+  XENDIT_SECRET_KEY: z.string().optional(),
+  XENDIT_WEBHOOK_TOKEN: z.string().optional(),
 });
 
 function readPublicEnv() {
@@ -54,8 +54,8 @@ export const publicEnv = readPublicEnv();
 export function serverEnv() {
   const parsed = serverSchema.safeParse({
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    PAYMONGO_SECRET_KEY: process.env.PAYMONGO_SECRET_KEY,
-    PAYMONGO_WEBHOOK_SECRET: process.env.PAYMONGO_WEBHOOK_SECRET,
+    XENDIT_SECRET_KEY: process.env.XENDIT_SECRET_KEY,
+    XENDIT_WEBHOOK_TOKEN: process.env.XENDIT_WEBHOOK_TOKEN,
   });
 
   if (!parsed.success) {

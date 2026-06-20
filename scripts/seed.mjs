@@ -50,6 +50,9 @@ async function ownerWithOrg(email, fullName, orgName, branchName) {
     .eq("user_id", user.id)
     .single();
   if (error) throw new Error(`read owner membership: ${error.message}`);
+  await supabase
+    .from("subscriptions")
+    .insert({ organization_id: membership.organization_id, plan: "free", status: "active" });
   created.push({ org: orgName, role: "owner", email });
   return {
     userId: user.id,

@@ -9,7 +9,8 @@ Replaces paper logbooks and spreadsheets with cloud **POS**, batch-level
 and **supplier / purchase-order** management. Each pharmacy business is a fully
 isolated tenant that can run multiple branches.
 
-> Status: **Milestone 1 — Foundation** complete. See [Build order](#build-order).
+> Status: **MVP complete** — all 9 milestones shipped. Live demo:
+> [reseta.vercel.app](https://reseta.vercel.app). See [Build order](#build-order).
 
 ## Tech stack
 
@@ -19,7 +20,7 @@ isolated tenant that can run multiple branches.
 - **Zod** validation, **react-hook-form**, **TanStack Table**, **Recharts**
 - Money stored as integer **centavos (PHP)**; timestamps `timestamptz`,
   business day reckoned in **Asia/Manila**
-- **PayMongo** subscription billing (scaffold only, feature-flagged off)
+- **Xendit** subscription billing (scaffold only, feature-flagged off)
 
 ## Getting started
 
@@ -43,8 +44,8 @@ cp .env.example .env.local   # then fill in values
 | `SUPABASE_SERVICE_ROLE_KEY` | **server-only** | Bypasses RLS — never expose to the browser |
 | `NEXT_PUBLIC_APP_NAME` | public | Display name (default `Reseta`) |
 | `NEXT_PUBLIC_BILLING_ENABLED` | public | Billing feature flag, `false` in dev |
-| `PAYMONGO_SECRET_KEY` | server-only | Only needed when billing is enabled (M9) |
-| `PAYMONGO_WEBHOOK_SECRET` | server-only | PayMongo webhook signature secret (M9) |
+| `XENDIT_SECRET_KEY` | server-only | Only needed when billing is enabled (M9) |
+| `XENDIT_WEBHOOK_TOKEN` | server-only | Xendit webhook callback token (M9) |
 
 ### 3. Run
 
@@ -147,4 +148,4 @@ supabase/
 6. **Alerts** ✅ — low-stock + expiry buckets (≤30/≤60/≤90/expired), CSV export, write-off.
 7. **Purchase orders** ✅ — draft→sent→received lifecycle, receive-into-batches, create-PO-from-low-stock.
 8. **Dashboard** ✅ — revenue/profit/transactions/items cards, charts, date + branch filters.
-9. Billing scaffold + polish.
+9. **Billing scaffold + polish** ✅ — Xendit subscription module (flagged off), Settings billing tab, mobile nav, loading/error states.
