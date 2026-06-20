@@ -21,7 +21,7 @@ export default async function PosPage() {
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "branch";
   const { startUtc } = manilaDayRange(manilaBusinessDay());
 
-  const [{ data: products }, { data: onHand }, { data: todays }, { data: recent }] =
+  const [{ data: products }, { data: onHand }, { data: todays }, { data: recent }, { data: customers }] =
     await Promise.all([
       supabase
         .from("products")
@@ -44,6 +44,10 @@ export default async function PosPage() {
         .eq("branch_id", ctx.activeBranchId)
         .order("created_at", { ascending: false })
         .limit(8),
+      supabase
+        .from("customers")
+        .select("id, name, phone, points_balance")
+        .order("name"),
     ]);
 
   const onHandById = new Map(
@@ -63,7 +67,7 @@ export default async function PosPage() {
         description={`Selling from ${branchName}. Today: ${todaysCount} sale(s), ${formatCentavos(todaysTotal)}.`}
       />
 
-      <PosTerminal products={sellable} branchName={branchName} />
+      <PosTerminal products={sellable} branchName={branchName} customers={customers ?? []} />
 
       <Card>
         <CardHeader>

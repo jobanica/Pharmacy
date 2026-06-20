@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { completeSale } from "@/lib/pos/actions";
+import { CustomerPicker, type Customer } from "@/components/pos/customer-picker";
 import { formatCentavos, pesosToCentavos, centavosToPesos } from "@/lib/money";
 
 export type SellableProduct = {
@@ -29,15 +30,19 @@ type CartLine = { product: SellableProduct; qty: number };
 export function PosTerminal({
   products,
   branchName,
+  customers,
 }: {
   products: SellableProduct[];
   branchName: string;
+  customers: Customer[];
 }) {
   const router = useRouter();
   const [search, setSearch] = React.useState("");
   const [cart, setCart] = React.useState<Map<string, CartLine>>(new Map());
   const [discount, setDiscount] = React.useState("");
   const [tendered, setTendered] = React.useState("");
+  const [customer, setCustomer] = React.useState<Customer | null>(null);
+  const [redeemPoints, setRedeemPoints] = React.useState(0);
   const [pending, startTransition] = React.useTransition();
 
   const results = React.useMemo(() => {
@@ -110,7 +115,12 @@ export function PosTerminal({
     discount ? pesosToCentavos(discount) : 0,
     subtotal,
   );
-  const total = Math.max(subtotal - discountCentavos, 0);
+  const maxRedeemable = customer
+    ? Math.min(customer.points_balance, Math.floor((subtotal - discountCentavos) / 100))
+    : 0;
+  const effectiveRedeem = Math.min(redeemPoints, Math.max(maxRedeemable, 0));
+  const redeemCentavos = effectiveRedeem * 100;
+  const total = Math.max(subtotal - discountCentavos - redeemCentavos, 0);
   const tenderedCentavos = tendered ? pesosToCentavos(tendered) : 0;
   const change = tenderedCentavos - total;
   const canComplete = lines.length > 0 && change >= 0 && !pending;
@@ -122,6 +132,8 @@ export function PosTerminal({
         items: lines.map((l) => ({ productId: l.product.id, quantity: l.qty })),
         discountCentavos,
         amountTenderedCentavos: tenderedCentavos,
+        customerId: customer?.id ?? null,
+        redeemPoints: effectiveRedeem,
       });
       if ("error" in res) {
         toast.error(res.error);
@@ -238,6 +250,15 @@ export function PosTerminal({
             )}
           </div>
 
+          <CustomerPicker
+            customers={customers}
+            selected={customer}
+            onSelect={setCustomer}
+            redeemPoints={redeemPoints}
+            onRedeemChange={setRedeemPoints}
+            maxRedeemable={maxRedeemable}
+          />
+
           <div className="grid gap-2 border-t pt-3 text-sm">
             <Row label="Subtotal" value={formatCentavos(subtotal)} />
             <div className="flex items-center justify-between gap-2">
@@ -252,11 +273,25 @@ export function PosTerminal({
                 className="h-8 w-28 text-right"
               />
             </div>
+            {effectiveRedeem > 0 ? (
+              <Row
+                label={`Points redeemed (${effectiveRedeem})`}
+                value={`−${formatCentavos(redeemCentavos)}`}
+                className="text-teal-300"
+              />
+            ) : null}
             <Row
               label="Total"
               value={formatCentavos(total)}
               className="text-base font-semibold"
             />
+            {customer ? (
+              <Row
+                label="Points to earn"
+                value={`+${Math.floor(total / 2000)}`}
+                className="text-xs text-amber-300"
+              />
+            ) : null}
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="tendered">Cash tendered (₱)</Label>
               <Input
@@ -283,6 +318,8 @@ export function PosTerminal({
                 setCart(new Map());
                 setDiscount("");
                 setTendered("");
+                setCustomer(null);
+                setRedeemPoints(0);
               }}
               disabled={lines.length === 0 || pending}
             >

@@ -221,6 +221,44 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          organization_id: string
+          phone: string | null
+          points_balance: number
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          phone?: string | null
+          points_balance?: number
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          phone?: string | null
+          points_balance?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_movements: {
         Row: {
           batch_id: string | null
@@ -353,6 +391,61 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string
+          id: string
+          kind: Database["public"]["Enums"]["loyalty_kind"]
+          organization_id: string
+          points: number
+          sale_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id: string
+          id?: string
+          kind: Database["public"]["Enums"]["loyalty_kind"]
+          organization_id: string
+          points: number
+          sale_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["loyalty_kind"]
+          organization_id?: string
+          points?: number
+          sale_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
             referencedColumns: ["id"]
           },
         ]
@@ -745,10 +838,13 @@ export type Database = {
           cashier_id: string | null
           change_centavos: number
           created_at: string
+          customer_id: string | null
           discount_centavos: number
           id: string
           organization_id: string
           payment_method: Database["public"]["Enums"]["payment_method"]
+          points_earned: number
+          points_redeemed: number
           receipt_number: string
           status: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos: number
@@ -762,10 +858,13 @@ export type Database = {
           cashier_id?: string | null
           change_centavos?: number
           created_at?: string
+          customer_id?: string | null
           discount_centavos?: number
           id?: string
           organization_id: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          points_earned?: number
+          points_redeemed?: number
           receipt_number: string
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
@@ -779,10 +878,13 @@ export type Database = {
           cashier_id?: string | null
           change_centavos?: number
           created_at?: string
+          customer_id?: string | null
           discount_centavos?: number
           id?: string
           organization_id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
+          points_earned?: number
+          points_redeemed?: number
           receipt_number?: string
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
@@ -804,6 +906,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_low_stock"
             referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "sales_organization_id_fkey"
@@ -1039,9 +1148,11 @@ export type Database = {
         Args: {
           p_amount_tendered_centavos?: number
           p_branch: string
+          p_customer?: string
           p_discount_centavos?: number
           p_items: Json
           p_payment_method?: Database["public"]["Enums"]["payment_method"]
+          p_redeem_points?: number
         }
         Returns: string
       }
@@ -1104,6 +1215,7 @@ export type Database = {
     }
     Enums: {
       attendance_kind: "clock_in" | "clock_out"
+      loyalty_kind: "earn" | "redeem" | "adjust"
       membership_status: "active" | "suspended"
       movement_type:
         | "receive"
@@ -1244,6 +1356,7 @@ export const Constants = {
   public: {
     Enums: {
       attendance_kind: ["clock_in", "clock_out"],
+      loyalty_kind: ["earn", "redeem", "adjust"],
       membership_status: ["active", "suspended"],
       movement_type: [
         "receive",
@@ -1269,3 +1382,4 @@ export type SaleStatus = Database["public"]["Enums"]["sale_status"];
 export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
 export type PoStatus = Database["public"]["Enums"]["po_status"];
 export type AttendanceKind = Database["public"]["Enums"]["attendance_kind"];
+export type LoyaltyKind = Database["public"]["Enums"]["loyalty_kind"];

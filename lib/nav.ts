@@ -10,6 +10,7 @@ import {
   ClipboardList,
   BellRing,
   Clock,
+  Star,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -29,6 +30,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requires: "view_reports" },
   { label: "Inventory", href: "/inventory", icon: Package, requires: "manage_catalog" },
   { label: "Alerts", href: "/alerts", icon: BellRing, requires: "manage_catalog" },
+  { label: "Customers", href: "/customers", icon: Star, requires: "create_sale" },
   { label: "Suppliers", href: "/suppliers", icon: Truck, requires: "manage_catalog" },
   { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "manage_catalog" },
   { label: "Time & Attendance", href: "/hris", icon: Clock, requires: "manage_members" },

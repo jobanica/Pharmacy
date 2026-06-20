@@ -279,6 +279,19 @@ async function seedAttendance(orgId, branchId, userIds) {
   console.log(`  attendance: ${rows.length} records`);
 }
 
+async function seedCustomers(orgId, list) {
+  const { error } = await supabase.from("customers").insert(
+    list.map((c) => ({
+      organization_id: orgId,
+      name: c.name,
+      phone: c.phone,
+      points_balance: c.points,
+    })),
+  );
+  if (error) throw new Error(`seed customers: ${error.message}`);
+  console.log(`  customers: ${list.length} loyalty members`);
+}
+
 async function addPendingInvite(orgId, invitedBy, email, role) {
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
   const expiresAt = new Date(Date.now() + 7 * 864e5).toISOString();
@@ -339,6 +352,14 @@ async function main() {
   await supabase.from("organizations").update({ plan: "pro" }).eq("id", a.orgId);
   await supabase.from("subscriptions").update({ plan: "pro" }).eq("organization_id", a.orgId);
   await seedAttendance(a.orgId, a.branchId, [a.userId, managerAId, cashierAId]);
+  await seedCustomers(a.orgId, [
+    { name: "Maria Clara", phone: "09171234567", points: 120 },
+    { name: "Jose Rizal", phone: "09181234568", points: 45 },
+    { name: "Andres Bonifacio", phone: "09191234569", points: 230 },
+    { name: "Gabriela Silang", phone: "09201234570", points: 0 },
+    { name: "Juan dela Cruz", phone: "09211234571", points: 85 },
+    { name: "Melchora Aquino", phone: "09221234572", points: 310 },
+  ]);
 
   // --- Organization B: GeneriCare (separate tenant, for isolation tests) ----
   const b = await ownerWithOrg(
@@ -358,6 +379,10 @@ async function main() {
   );
   await seedStock(b.orgId, b.branchId, bProducts);
   await seedSales(b.orgId, b.branchId, b.userId, 10);
+  await seedCustomers(b.orgId, [
+    { name: "Apolinario Mabini", phone: "09331234573", points: 60 },
+    { name: "Emilio Aguinaldo", phone: "09341234574", points: 15 },
+  ]);
 
   console.log("Done. Test accounts (password for all: %s):\n", DEV_PASSWORD);
   console.table(created.map((c) => ({ email: c.email, role: c.role })));

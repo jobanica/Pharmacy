@@ -11,5 +11,7 @@ export const completeSaleSchema = z.object({
     .min(1, "Cart is empty"),
   discountCentavos: z.number().int().min(0).default(0),
   amountTenderedCentavos: z.number().int().min(0),
+  customerId: z.string().uuid().optional().nullable(),
+  redeemPoints: z.number().int().min(0).default(0),
 });
 export type CompleteSaleInput = z.infer<typeof completeSaleSchema>;

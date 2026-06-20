@@ -22,12 +22,20 @@ export default async function ReceiptPage({
   const { data: sale } = await supabase
     .from("sales")
     .select(
-      "id, branch_id, receipt_number, cashier_id, subtotal_centavos, discount_centavos, total_centavos, payment_method, amount_tendered_centavos, change_centavos, status, created_at",
+      "id, branch_id, receipt_number, cashier_id, subtotal_centavos, discount_centavos, total_centavos, payment_method, amount_tendered_centavos, change_centavos, status, created_at, customer_id, points_earned, points_redeemed",
     )
     .eq("id", saleId)
     .maybeSingle();
 
   if (!sale) notFound();
+
+  const { data: customer } = sale.customer_id
+    ? await supabase
+        .from("customers")
+        .select("name, points_balance")
+        .eq("id", sale.customer_id)
+        .maybeSingle()
+    : { data: null };
 
   const [{ data: items }, { data: branch }, { data: cashier }] = await Promise.all([
     supabase
@@ -122,11 +130,24 @@ export default async function ReceiptPage({
           {sale.discount_centavos > 0 ? (
             <Row label="Discount" value={`-${formatCentavos(sale.discount_centavos)}`} />
           ) : null}
+          {sale.points_redeemed > 0 ? (
+            <Row label={`Points (${sale.points_redeemed})`} value={`-${formatCentavos(sale.points_redeemed * 100)}`} />
+          ) : null}
           <Row label="TOTAL" value={formatCentavos(sale.total_centavos)} bold />
           <Row label="Cash" value={formatCentavos(sale.amount_tendered_centavos)} />
           <Row label="Change" value={formatCentavos(sale.change_centavos)} />
           <Row label="Payment" value={sale.payment_method.toUpperCase()} />
         </div>
+
+        {customer ? (
+          <div className="mt-2 border-t border-dashed pt-2 text-xs">
+            <div className="text-center font-semibold">★ Loyalty</div>
+            <Row label="Member" value={customer.name} />
+            {sale.points_redeemed > 0 ? <Row label="Redeemed" value={`-${sale.points_redeemed} pts`} /> : null}
+            <Row label="Earned" value={`+${sale.points_earned} pts`} />
+            <Row label="Balance" value={`${customer.points_balance} pts`} />
+          </div>
+        ) : null}
 
         <div className="mt-3 border-t border-dashed pt-2 text-center text-xs">
           Thank you for shopping!

@@ -28,6 +28,8 @@ export async function completeSale(
     p_items: d.items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
     p_discount_centavos: d.discountCentavos,
     p_amount_tendered_centavos: d.amountTenderedCentavos,
+    ...(d.customerId ? { p_customer: d.customerId } : {}),
+    ...(d.redeemPoints ? { p_redeem_points: d.redeemPoints } : {}),
   });
   if (error) return { error: error.message };
 
