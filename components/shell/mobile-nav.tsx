@@ -35,7 +35,7 @@ export function MobileNav({
           </Button>
         }
       />
-      <SheetContent side="left" className="w-64 p-0">
+      <SheetContent side="left" className="dark app-shell w-64 border-white/10 p-0 text-foreground">
         <SheetHeader className="border-b">
           <SheetTitle className="flex items-center gap-2">
             <BrandMark className="size-7" />

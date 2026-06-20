@@ -117,6 +117,37 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Violet "Smart POS" theme for the authed app shell. Pairs with `.dark` so
+   shadcn components use their dark variants; these vars retint them violet and
+   paint the gradient backdrop. */
+.app-shell {
+  --background: oklch(0.16 0.035 282);
+  --foreground: oklch(0.97 0.01 285);
+  --card: oklch(0.225 0.045 285);
+  --card-foreground: oklch(0.97 0.01 285);
+  --popover: oklch(0.2 0.045 285);
+  --popover-foreground: oklch(0.97 0.01 285);
+  --primary: oklch(0.62 0.2 287);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.28 0.05 287);
+  --secondary-foreground: oklch(0.97 0.01 285);
+  --muted: oklch(0.27 0.04 287);
+  --muted-foreground: oklch(0.76 0.035 287);
+  --accent: oklch(0.32 0.07 292);
+  --accent-foreground: oklch(0.99 0 0);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: oklch(0.62 0.2 287);
+  --sidebar: oklch(0.19 0.04 284);
+  --sidebar-foreground: oklch(0.95 0.01 285);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-accent: oklch(0.3 0.06 290);
+  background-color: oklch(0.14 0.03 282);
+  background-image:
+    radial-gradient(1100px 600px at 8% -8%, oklch(0.45 0.16 300 / 0.35), transparent 60%),
+    radial-gradient(900px 520px at 108% 6%, oklch(0.5 0.18 332 / 0.28), transparent 55%);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

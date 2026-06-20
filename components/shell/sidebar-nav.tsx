@@ -24,10 +24,10 @@ export function SidebarNav({ role }: { role: Role }) {
             key={item.href}
             href={item.href}
             className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
               active
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-violet-700/30"
+                : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
             )}
           >
             <Icon className="size-4" />

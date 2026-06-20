@@ -7,6 +7,7 @@ import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { UserMenu } from "@/components/shell/user-menu";
 import { MobileNav } from "@/components/shell/mobile-nav";
+import { UpgradeCard } from "@/components/shell/upgrade-card";
 
 export default async function AppLayout({
   children,
@@ -16,25 +17,30 @@ export default async function AppLayout({
   const ctx = await requireAppContext();
 
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr] md:grid-cols-[256px_1fr] md:grid-rows-1">
+    <div className="dark app-shell grid min-h-screen grid-rows-[auto_1fr] text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
       {/* Sidebar */}
-      <aside className="hidden border-r bg-card md:flex md:flex-col">
+      <aside className="hidden border-r border-white/10 bg-white/[0.04] backdrop-blur-xl md:flex md:flex-col">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 border-b px-5 py-4"
+          className="flex items-center gap-2 px-5 py-5"
         >
           <BrandMark className="size-8" />
-          <span className="font-semibold">{publicEnv.NEXT_PUBLIC_APP_NAME}</span>
+          <span className="text-lg font-semibold tracking-tight">
+            {publicEnv.NEXT_PUBLIC_APP_NAME}
+          </span>
         </Link>
-        <div className="border-b px-5 py-2 text-xs text-muted-foreground">
+        <div className="px-5 pb-2 text-xs uppercase tracking-wider text-muted-foreground">
           {ctx.organization.name}
         </div>
         <SidebarNav role={ctx.role} />
+        <div className="mt-auto p-3">
+          <UpgradeCard />
+        </div>
       </aside>
 
       {/* Main column */}
       <div className="flex min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b bg-card px-4 py-3 md:px-6">
+        <header className="flex items-center justify-between gap-4 border-b border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-xl md:px-6">
           <div className="flex items-center gap-3">
             <MobileNav
               role={ctx.role}
