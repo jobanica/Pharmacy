@@ -4,11 +4,13 @@ import { ArrowLeft } from "lucide-react";
 
 import { PrintButton } from "@/components/pos/print-button";
 import { VoidSaleButton } from "@/components/pos/void-sale-button";
+import { AutoPrint } from "@/components/pos/auto-print";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import { formatManila } from "@/lib/date";
+import { readBrand, PAPER_WIDTHS } from "@/lib/branding";
 
 export default async function ReceiptPage({
   params,
@@ -66,9 +68,11 @@ export default async function ReceiptPage({
   const lines = [...byProduct.values()];
   const voided = sale.status === "voided";
   const canVoid = can(ctx.role, "void_sale") && !voided;
+  const brand = readBrand(ctx.organization.settings);
 
   return (
     <div className="mx-auto max-w-md">
+      <AutoPrint enabled={brand.receipt.autoPrint} />
       <div className="mb-4 flex items-center justify-between print:hidden">
         <Link
           href="/pos"
@@ -83,10 +87,17 @@ export default async function ReceiptPage({
         </div>
       </div>
 
-      <div className="receipt-print mx-auto max-w-[320px] rounded-lg border bg-white p-5 font-mono text-[13px] leading-relaxed text-black">
+      <div className={`receipt-print mx-auto ${PAPER_WIDTHS[brand.receipt.paper]} rounded-lg border bg-white p-5 font-mono text-[13px] leading-relaxed text-black`}>
         <div className="text-center">
-          <div className="text-base font-bold">{ctx.organization.name}</div>
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.logoUrl} alt="" className="mx-auto mb-2 h-10 object-contain" />
+          ) : null}
+          <div className="text-base font-bold">{brand.name}</div>
           <div>{branch?.name ?? ""}</div>
+          {brand.receipt.header ? (
+            <div className="mt-1 whitespace-pre-line text-xs">{brand.receipt.header}</div>
+          ) : null}
           <div className="mt-1 text-xs">OFFICIAL RECEIPT</div>
         </div>
 
@@ -149,8 +160,8 @@ export default async function ReceiptPage({
           </div>
         ) : null}
 
-        <div className="mt-3 border-t border-dashed pt-2 text-center text-xs">
-          Thank you for shopping!
+        <div className="mt-3 whitespace-pre-line border-t border-dashed pt-2 text-center text-xs">
+          {brand.receipt.footer ?? "Thank you for shopping!"}
           <div className="mt-1">This serves as your official receipt.</div>
         </div>
       </div>

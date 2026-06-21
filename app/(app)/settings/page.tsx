@@ -22,6 +22,9 @@ import { Button } from "@/components/ui/button";
 import { InviteForm } from "@/components/settings/invite-form";
 import { CopyInviteLink } from "@/components/settings/copy-invite-link";
 import { BillingSection } from "@/components/settings/billing-section";
+import { BrandingSettings } from "@/components/settings/branding-settings";
+import { readBrand } from "@/lib/branding";
+import { publicEnv } from "@/lib/env";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can, ROLE_LABELS, type Role } from "@/lib/auth/roles";
@@ -51,6 +54,7 @@ export default async function SettingsPage() {
   const canManageMembers = can(ctx.role, "manage_members");
   const isOwner = ctx.role === "owner";
   const subscription = isOwner ? await getSubscription() : null;
+  const brand = readBrand(ctx.organization.settings);
 
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
@@ -175,6 +179,18 @@ export default async function SettingsPage() {
             ) : null}
           </CardContent>
         </Card>
+      ) : null}
+
+      {isOwner ? (
+        <BrandingSettings
+          appName={publicEnv.NEXT_PUBLIC_APP_NAME}
+          brandName={brand.name}
+          logoUrl={brand.logoUrl}
+          header={brand.receipt.header ?? ""}
+          footer={brand.receipt.footer ?? ""}
+          paper={brand.receipt.paper}
+          autoPrint={brand.receipt.autoPrint}
+        />
       ) : null}
 
       {isOwner ? (

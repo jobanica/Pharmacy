@@ -18,6 +18,7 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import type { Role } from "@/lib/auth/roles";
+import type { Json } from "@/lib/supabase/types";
 
 export const ACTIVE_BRANCH_COOKIE = "active_branch";
 
@@ -28,7 +29,7 @@ export type BranchSummary = {
 
 export type AppContext = {
   user: { id: string; fullName: string; email: string };
-  organization: { id: string; name: string; plan: string };
+  organization: { id: string; name: string; plan: string; settings: Json };
   role: Role;
   branches: BranchSummary[];
   activeBranchId: string;
@@ -54,7 +55,7 @@ export const getAppContext = cache(
     const [{ data: membership }, { data: branches }] = await Promise.all([
       supabase
         .from("memberships")
-        .select("role, default_branch_id, organization_id, organizations(id, name, plan)")
+        .select("role, default_branch_id, organization_id, organizations(id, name, plan, settings)")
         .eq("user_id", user.id)
         .eq("status", "active")
         .maybeSingle(),
@@ -73,6 +74,7 @@ export const getAppContext = cache(
       id: string;
       name: string;
       plan: string;
+      settings: Json;
     };
 
     // Pharmacists/cashiers are limited to their assigned branch.
@@ -99,7 +101,7 @@ export const getAppContext = cache(
         "User",
       email: user.email ?? "",
     },
-    organization: { id: org.id, name: org.name, plan: org.plan },
+    organization: { id: org.id, name: org.name, plan: org.plan, settings: org.settings },
     role,
     branches: accessible,
     activeBranchId,

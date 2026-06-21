@@ -1,13 +1,13 @@
 import Link from "next/link";
 
 import { requireAppContext } from "@/lib/auth/session";
-import { publicEnv } from "@/lib/env";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { UserMenu } from "@/components/shell/user-menu";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { UpgradeCard } from "@/components/shell/upgrade-card";
+import { readBrand } from "@/lib/branding";
 
 export default async function AppLayout({
   children,
@@ -15,6 +15,7 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const ctx = await requireAppContext();
+  const brand = readBrand(ctx.organization.settings);
 
   return (
     <div className="dark app-shell grid min-h-screen grid-rows-[auto_1fr] text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
@@ -24,9 +25,14 @@ export default async function AppLayout({
           href="/dashboard"
           className="flex items-center gap-2 px-5 py-5"
         >
-          <BrandMark className="size-8" />
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.logoUrl} alt="" className="size-8 rounded-lg bg-white object-contain p-0.5" />
+          ) : (
+            <BrandMark className="size-8" />
+          )}
           <span className="text-lg font-semibold tracking-tight">
-            {publicEnv.NEXT_PUBLIC_APP_NAME}
+            {brand.name}
           </span>
         </Link>
         <div className="px-5 pb-2 text-xs uppercase tracking-wider text-muted-foreground">
@@ -44,7 +50,7 @@ export default async function AppLayout({
           <div className="flex items-center gap-3">
             <MobileNav
               role={ctx.role}
-              appName={publicEnv.NEXT_PUBLIC_APP_NAME}
+              appName={brand.name}
               orgName={ctx.organization.name}
             />
             <BranchSwitcher
