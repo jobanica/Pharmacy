@@ -1034,6 +1034,7 @@ export type Database = {
           product_id: string | null
           product_name: string | null
           quantity: number | null
+          supplier_name: string | null
           unit: string | null
         }
         Relationships: [

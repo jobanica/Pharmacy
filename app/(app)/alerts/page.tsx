@@ -21,7 +21,7 @@ export default async function AlertsPage() {
       .order("deficit", { ascending: false }),
     supabase
       .from("v_expiring_batches")
-      .select("batch_id, product_name, unit, batch_number, expiry_date, quantity, days_until")
+      .select("batch_id, product_name, unit, batch_number, expiry_date, quantity, days_until, supplier_name")
       .eq("branch_id", ctx.activeBranchId)
       .order("days_until", { ascending: true }),
   ]);

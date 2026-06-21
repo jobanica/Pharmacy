@@ -27,6 +27,7 @@ export type ExpiringRow = {
   expiry_date: string;
   quantity: number;
   days_until: number;
+  supplier_name: string | null;
 };
 
 function bucket(days: number): { label: string; tone: string } {
@@ -97,6 +98,7 @@ export function ExpiringTable({
           filename={`expiring-stock-${branchName}.csv`}
           columns={[
             { header: "Product", value: (r) => r.product_name },
+            { header: "Supplier", value: (r) => r.supplier_name ?? "" },
             { header: "Batch", value: (r) => r.batch_number ?? "" },
             { header: "Expiry", value: (r) => r.expiry_date },
             { header: "Days until", value: (r) => r.days_until },
@@ -111,6 +113,7 @@ export function ExpiringTable({
           <TableHeader>
             <TableRow>
               <TableHead>Product</TableHead>
+              <TableHead>Supplier</TableHead>
               <TableHead>Batch</TableHead>
               <TableHead>Expiry</TableHead>
               <TableHead>Status</TableHead>
@@ -125,6 +128,7 @@ export function ExpiringTable({
                 return (
                   <TableRow key={r.batch_id}>
                     <TableCell className="font-medium">{r.product_name}</TableCell>
+                    <TableCell className="text-muted-foreground">{r.supplier_name ?? "—"}</TableCell>
                     <TableCell>{r.batch_number ?? "—"}</TableCell>
                     <TableCell>{r.expiry_date}</TableCell>
                     <TableCell>
@@ -147,7 +151,7 @@ export function ExpiringTable({
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={canManage ? 6 : 5}
+                  colSpan={canManage ? 7 : 6}
                   className="h-20 text-center text-muted-foreground"
                 >
                   No stock expiring within 90 days. 🎉
