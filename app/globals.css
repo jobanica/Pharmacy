@@ -165,7 +165,9 @@
     visibility: hidden;
   }
   .receipt-print,
-  .receipt-print * {
+  .receipt-print *,
+  .print-area,
+  .print-area * {
     visibility: visible;
   }
   .receipt-print {
@@ -174,5 +176,12 @@
     top: 0;
     width: 100%;
     border: none;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    color: #000;
   }
 }

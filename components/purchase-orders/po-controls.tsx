@@ -24,6 +24,7 @@ import {
   setPoStatus,
   receivePurchaseOrder,
 } from "@/lib/purchase-orders/actions";
+import { formatCentavos } from "@/lib/money";
 
 type Supplier = { id: string; name: string };
 type Product = { id: string; name: string };
@@ -201,6 +202,7 @@ type ReceiveItem = {
   product_name: string;
   quantity_ordered: number;
   quantity_received: number;
+  unit_cost_centavos: number;
 };
 
 export function ReceiveDialog({ poId, items }: { poId: string; items: ReceiveItem[] }) {
@@ -211,6 +213,7 @@ export function ReceiveDialog({ poId, items }: { poId: string; items: ReceiveIte
     items.map((it) => ({
       itemId: it.id,
       name: it.product_name,
+      cost: it.unit_cost_centavos,
       outstanding: Math.max(it.quantity_ordered - it.quantity_received, 0),
       qty: String(Math.max(it.quantity_ordered - it.quantity_received, 0)),
       batch: "",
@@ -267,7 +270,7 @@ export function ReceiveDialog({ poId, items }: { poId: string; items: ReceiveIte
               <div className="text-sm font-medium">
                 {l.name}
                 <span className="ml-2 text-xs text-muted-foreground">
-                  {l.outstanding} outstanding
+                  {l.outstanding} outstanding · {formatCentavos(l.cost)}/unit cost
                 </span>
               </div>
               <div className="flex flex-wrap items-end gap-2">

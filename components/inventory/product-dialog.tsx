@@ -4,6 +4,7 @@ import * as React from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -25,7 +26,8 @@ import {
   type ProductInput,
   type ProductFormValues,
 } from "@/lib/validation/catalog";
-import { createProduct, updateProduct } from "@/lib/catalog/actions";
+import { createProduct, updateProduct, createCategory } from "@/lib/catalog/actions";
+import { receiveStock } from "@/lib/inventory/actions";
 import { centavosToPesos } from "@/lib/money";
 
 export type ProductRow = {
@@ -45,6 +47,7 @@ export type ProductRow = {
 type CategoryOption = { id: string; name: string };
 
 const UNITS = ["piece", "tablet", "capsule", "bottle", "box", "sachet", "tube", "vial", "ml"];
+const EMPTY_STOCK = { qty: "", batch: "", expiry: "", cost: "" };
 
 export function ProductDialog({
   categories,
@@ -60,14 +63,44 @@ export function ProductDialog({
   const [pending, startTransition] = React.useTransition();
   const isEdit = !!product;
 
+  const [cats, setCats] = React.useState(categories);
+  const [newCat, setNewCat] = React.useState("");
+  const [addingCat, setAddingCat] = React.useState(false);
+  const [stock, setStock] = React.useState(EMPTY_STOCK);
+
   const form = useForm<ProductFormValues, unknown, ProductInput>({
     resolver: zodResolver(productSchema),
     defaultValues: defaultsFor(product),
   });
 
-  React.useEffect(() => {
-    if (open) form.reset(defaultsFor(product));
-  }, [open, product, form]);
+  function onOpenChange(v: boolean) {
+    setOpen(v);
+    if (v) {
+      form.reset(defaultsFor(product));
+      setCats(categories);
+      setStock(EMPTY_STOCK);
+      setNewCat("");
+      setAddingCat(false);
+    }
+  }
+
+  function addCategory() {
+    const name = newCat.trim();
+    if (!name) return;
+    startTransition(async () => {
+      const res = await createCategory({ name });
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      const id = res.id!;
+      setCats((c) => [...c, { id, name }].sort((a, b) => a.name.localeCompare(b.name)));
+      form.setValue("categoryId", id);
+      setNewCat("");
+      setAddingCat(false);
+      toast.success("Category added");
+    });
+  }
 
   function onSubmit(values: ProductInput) {
     startTransition(async () => {
@@ -78,6 +111,26 @@ export function ProductDialog({
         toast.error(res.error);
         return;
       }
+
+      // On create, optionally receive opening stock for the new product.
+      const qty = Number(stock.qty);
+      if (!isEdit && "id" in res && res.id && qty > 0) {
+        const stockRes = await receiveStock({
+          productId: res.id,
+          quantity: qty,
+          cost: Number(stock.cost) || 0,
+          batchNumber: stock.batch || undefined,
+          expiryDate: stock.expiry || undefined,
+          supplierId: "",
+        });
+        if ("error" in stockRes) {
+          toast.error(`Product saved, but stock failed: ${stockRes.error}`);
+          setOpen(false);
+          router.refresh();
+          return;
+        }
+      }
+
       toast.success(isEdit ? "Product updated" : "Product added");
       setOpen(false);
       router.refresh();
@@ -85,13 +138,14 @@ export function ProductDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger render={trigger as React.ReactElement} />
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit product" : "Add product"}</DialogTitle>
           <DialogDescription>
-            Selling price is per unit; cost is captured when you receive stock.
+            Selling price is per unit. Add opening stock with its batch, expiry,
+            and cost below.
           </DialogDescription>
         </DialogHeader>
 
@@ -106,18 +160,51 @@ export function ProductDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Category">
-              <select
-                {...form.register("categoryId")}
-                className="h-9 rounded-md border bg-transparent px-3 text-sm"
-                defaultValue={product?.category_id ?? ""}
-              >
-                <option value="">Uncategorized</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+              <Controller
+                control={form.control}
+                name="categoryId"
+                render={({ field }) => (
+                  <select
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                  >
+                    <option value="">Uncategorized</option>
+                    {cats.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              />
+              {addingCat ? (
+                <div className="mt-1 flex gap-1">
+                  <Input
+                    value={newCat}
+                    onChange={(e) => setNewCat(e.target.value)}
+                    placeholder="New category"
+                    className="h-8"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addCategory();
+                      }
+                    }}
+                  />
+                  <Button type="button" size="sm" onClick={addCategory} disabled={pending}>
+                    Add
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingCat(true)}
+                  className="mt-1 inline-flex items-center gap-1 text-xs text-fuchsia-300 hover:underline"
+                >
+                  <Plus className="size-3" /> New category
+                </button>
+              )}
             </Field>
             <Field label="Unit">
               <select
@@ -144,17 +231,9 @@ export function ProductDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <Field label="Selling price (₱)" error={form.formState.errors.price?.message}>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                {...form.register("price")}
-              />
+              <Input type="number" step="0.01" min="0" {...form.register("price")} />
             </Field>
-            <Field
-              label="Reorder point"
-              error={form.formState.errors.reorderPoint?.message}
-            >
+            <Field label="Reorder point" error={form.formState.errors.reorderPoint?.message}>
               <Input type="number" min="0" {...form.register("reorderPoint")} />
             </Field>
           </div>
@@ -164,10 +243,7 @@ export function ProductDialog({
             name="requiresPrescription"
             render={({ field }) => (
               <label className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={!!field.value}
-                  onCheckedChange={(v) => field.onChange(v === true)}
-                />
+                <Checkbox checked={!!field.value} onCheckedChange={(v) => field.onChange(v === true)} />
                 Requires prescription
               </label>
             )}
@@ -179,13 +255,52 @@ export function ProductDialog({
             render={({ field }) => (
               <label className="flex items-center justify-between text-sm">
                 <span>Active (sellable)</span>
-                <Switch
-                  checked={!!field.value}
-                  onCheckedChange={(v) => field.onChange(v)}
-                />
+                <Switch checked={!!field.value} onCheckedChange={(v) => field.onChange(v)} />
               </label>
             )}
           />
+
+          {!isEdit ? (
+            <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p className="text-sm font-medium">Opening stock (optional)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Quantity">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={stock.qty}
+                    onChange={(e) => setStock((s) => ({ ...s, qty: e.target.value }))}
+                  />
+                </Field>
+                <Field label="Unit cost (₱)">
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={stock.cost}
+                    onChange={(e) => setStock((s) => ({ ...s, cost: e.target.value }))}
+                  />
+                </Field>
+                <Field label="Batch number">
+                  <Input
+                    value={stock.batch}
+                    onChange={(e) => setStock((s) => ({ ...s, batch: e.target.value }))}
+                    placeholder="optional"
+                  />
+                </Field>
+                <Field label="Expiry date">
+                  <Input
+                    type="date"
+                    value={stock.expiry}
+                    onChange={(e) => setStock((s) => ({ ...s, expiry: e.target.value }))}
+                  />
+                </Field>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Received into the active branch as the product&apos;s first batch.
+              </p>
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button type="submit" disabled={pending}>

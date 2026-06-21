@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PoStatusBadge } from "@/components/purchase-orders/po-status-badge";
+import { PrintButton } from "@/components/pos/print-button";
 import {
   HeaderEditor,
   AddItemForm,
@@ -78,7 +79,7 @@ export default async function PurchaseOrderDetailPage({
 
   return (
     <div className="grid gap-6">
-      <div>
+      <div className="print:hidden">
         <Link
           href="/purchase-orders"
           className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -91,9 +92,11 @@ export default async function PurchaseOrderDetailPage({
             {po.po_number}
             <PoStatusBadge status={status} />
           </h1>
-          {canManage ? (
-            <div className="flex gap-2">
-              {isDraft ? (
+          <div className="flex gap-2">
+            <PrintButton />
+            {canManage ? (
+              <>
+                {isDraft ? (
                 <>
                   <StatusButton poId={po.id} to="cancelled" />
                   <StatusButton poId={po.id} to="sent" />
@@ -109,14 +112,24 @@ export default async function PurchaseOrderDetailPage({
                       product_name: r.name,
                       quantity_ordered: r.quantity_ordered,
                       quantity_received: r.quantity_received,
+                      unit_cost_centavos: r.unit_cost_centavos,
                     }))}
                   />
                 </>
               ) : null}
-            </div>
-          ) : null}
+              </>
+            ) : null}
+          </div>
         </div>
       </div>
+
+      <div className="print-area grid gap-6">
+        <div className="hidden print:block">
+          <div className="text-lg font-bold">{ctx.organization.name}</div>
+          <div className="text-sm">
+            Purchase Order {po.po_number} · {supplierName} · {branchName}
+          </div>
+        </div>
 
       <Card>
         <CardContent className="grid gap-4 p-5 text-sm">
@@ -190,6 +203,7 @@ export default async function PurchaseOrderDetailPage({
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
