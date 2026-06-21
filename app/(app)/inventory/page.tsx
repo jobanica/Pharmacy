@@ -4,13 +4,17 @@ import { CategoryManager } from "@/components/inventory/category-manager";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
+import { aiReceiptEnabled } from "@/lib/ai/receipt";
 
 export default async function InventoryPage() {
   const ctx = await requireAppContext();
   const supabase = await createClient();
   const canManage = can(ctx.role, "manage_catalog");
+  const branchName =
+    ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
+    "the active branch";
 
-  const [{ data: products }, { data: categories }, { data: onHand }] =
+  const [{ data: products }, { data: categories }, { data: onHand }, { data: suppliers }] =
     await Promise.all([
       supabase
         .from("products")
@@ -23,6 +27,7 @@ export default async function InventoryPage() {
         .from("v_product_on_hand")
         .select("product_id, on_hand")
         .eq("branch_id", ctx.activeBranchId),
+      supabase.from("suppliers").select("id, name").order("name"),
     ]);
 
   const onHandById = new Map(
@@ -54,16 +59,16 @@ export default async function InventoryPage() {
     <div>
       <PageHeader
         title="Inventory"
-        description={`On-hand shown for ${
-          ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
-          "the active branch"
-        }. Open a product to receive stock, adjust, and view its history.`}
+        description={`On-hand shown for ${branchName}. Open a product to receive stock, adjust, and view its history.`}
         action={canManage ? <CategoryManager categories={categoryList} /> : null}
       />
       <ProductsTable
         products={rows}
         categories={categoryList}
+        suppliers={suppliers ?? []}
         canManage={canManage}
+        aiEnabled={aiReceiptEnabled()}
+        branchName={branchName}
       />
     </div>
   );

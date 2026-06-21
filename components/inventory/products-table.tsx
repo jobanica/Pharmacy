@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ProductDialog, type ProductRow } from "./product-dialog";
+import { ScanReceiptDialog } from "./scan-receipt-dialog";
 import { setProductActive } from "@/lib/catalog/actions";
 import { formatCentavos } from "@/lib/money";
 
@@ -156,11 +157,17 @@ function buildColumns(
 export function ProductsTable({
   products,
   categories,
+  suppliers,
   canManage,
+  aiEnabled,
+  branchName,
 }: {
   products: ProductWithCategory[];
   categories: CategoryOption[];
+  suppliers: { id: string; name: string }[];
   canManage: boolean;
+  aiEnabled: boolean;
+  branchName: string;
 }) {
   const [categoryFilter, setCategoryFilter] = React.useState<string>("");
   const columns = React.useMemo(
@@ -201,6 +208,20 @@ export function ProductsTable({
               </option>
             ))}
           </select>
+          {canManage ? (
+            <ScanReceiptDialog
+              suppliers={suppliers}
+              products={products.map((p) => ({ id: p.id, name: p.name }))}
+              aiEnabled={aiEnabled}
+              branchName={branchName}
+              trigger={
+                <Button variant="outline">
+                  <Sparkles className="size-4" />
+                  Scan receipt
+                </Button>
+              }
+            />
+          ) : null}
           {canManage ? (
             <ProductDialog
               categories={categories}

@@ -1,0 +1,222 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+
+import { createClient } from "@/lib/supabase/server";
+import { requireAppContext, type AppContext } from "@/lib/auth/session";
+import { can } from "@/lib/auth/roles";
+import { pesosToCentavos } from "@/lib/money";
+import { aiReceiptEnabled, extractReceipt } from "@/lib/ai/receipt";
+
+export type Result = { ok: true } | { error: string };
+
+async function guard(): Promise<{ error: string } | { ctx: AppContext }> {
+  const ctx = await requireAppContext();
+  if (!can(ctx.role, "manage_catalog")) {
+    return { error: "You do not have permission to receive stock" };
+  }
+  return { ctx };
+}
+
+/** Normalize a name for fuzzy matching (lowercase, collapse whitespace). */
+function norm(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+export type ScannedLine = {
+  productName: string;
+  genericName: string | null;
+  quantity: number;
+  unitCost: number;
+  expiryDate: string | null;
+  batchNumber: string | null;
+  /** Suggested existing product to match against, if any. */
+  matchProductId: string | null;
+  matchProductName: string | null;
+};
+
+export type ScanResult =
+  | {
+      ok: true;
+      supplierName: string | null;
+      matchSupplierId: string | null;
+      lines: ScannedLine[];
+    }
+  | { error: string };
+
+/**
+ * Scan a receipt image: send it to Claude, then suggest matches against the
+ * org's existing products and suppliers so the user can review before importing.
+ */
+export async function scanReceipt(dataUrl: string): Promise<ScanResult> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+  if (!aiReceiptEnabled()) {
+    return {
+      error:
+        "AI receipt scanning isn't configured. Add an ANTHROPIC_API_KEY to enable it.",
+    };
+  }
+
+  const outcome = await extractReceipt(dataUrl);
+  if (!outcome.ok) return { error: outcome.error };
+
+  const supabase = await createClient();
+  const [{ data: products }, { data: suppliers }] = await Promise.all([
+    supabase.from("products").select("id, name, generic_name"),
+    supabase.from("suppliers").select("id, name"),
+  ]);
+
+  const productList = products ?? [];
+  const byName = new Map(productList.map((p) => [norm(p.name), p]));
+
+  function matchProduct(name: string): { id: string; name: string } | null {
+    const key = norm(name);
+    const exact = byName.get(key);
+    if (exact) return { id: exact.id, name: exact.name };
+    // Fall back to a contains match (either direction) on name or generic.
+    const partial = productList.find((p) => {
+      const pn = norm(p.name);
+      const gn = p.generic_name ? norm(p.generic_name) : "";
+      return (
+        pn.includes(key) || key.includes(pn) || (gn && (gn.includes(key) || key.includes(gn)))
+      );
+    });
+    return partial ? { id: partial.id, name: partial.name } : null;
+  }
+
+  const lines: ScannedLine[] = outcome.data.items.map((it) => {
+    const match = matchProduct(it.product_name);
+    return {
+      productName: it.product_name,
+      genericName: it.generic_name,
+      quantity: Number.isFinite(it.quantity) ? Math.max(0, Math.round(it.quantity)) : 0,
+      unitCost: Number.isFinite(it.unit_cost) ? Math.max(0, it.unit_cost) : 0,
+      expiryDate: it.expiry_date,
+      batchNumber: it.batch_number,
+      matchProductId: match?.id ?? null,
+      matchProductName: match?.name ?? null,
+    };
+  });
+
+  let matchSupplierId: string | null = null;
+  if (outcome.data.supplier_name) {
+    const key = norm(outcome.data.supplier_name);
+    const sup = (suppliers ?? []).find((s) => norm(s.name) === key);
+    matchSupplierId = sup?.id ?? null;
+  }
+
+  return {
+    ok: true,
+    supplierName: outcome.data.supplier_name,
+    matchSupplierId,
+    lines,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Import the reviewed receipt into inventory
+// ---------------------------------------------------------------------------
+const importLineSchema = z
+  .object({
+    // Either an existing product id, or a name to create a new product.
+    productId: z.string().uuid().optional().or(z.literal("")),
+    newProductName: z.string().max(200).optional().or(z.literal("")),
+    newGenericName: z.string().max(200).optional().or(z.literal("")),
+    quantity: z.coerce.number().int().positive(),
+    unitCost: z.coerce.number().min(0).default(0),
+    expiryDate: z.string().optional().or(z.literal("")),
+    batchNumber: z.string().max(64).optional().or(z.literal("")),
+  })
+  .refine((l) => (l.productId && l.productId.length > 0) || (l.newProductName ?? "").trim().length > 0, {
+    message: "Each line needs a matched product or a name to create one",
+  });
+
+const importReceiptSchema = z.object({
+  supplierId: z.string().uuid().optional().or(z.literal("")),
+  newSupplierName: z.string().max(200).optional().or(z.literal("")),
+  lines: z.array(importLineSchema).min(1, "Nothing to import"),
+});
+export type ImportReceiptInput = z.input<typeof importReceiptSchema>;
+
+export type ImportResult = { ok: true; received: number } | { error: string };
+
+/**
+ * Receive the reviewed receipt lines into the active branch: ensure the
+ * supplier exists, create any new products, then receive_stock each line with
+ * the supplier attached (so near-expiry alerts reveal who supplied it).
+ */
+export async function importReceipt(input: ImportReceiptInput): Promise<ImportResult> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+  const parsed = importReceiptSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+
+  const supabase = await createClient();
+  const orgId = g.ctx.organization.id;
+
+  // 1. Resolve the supplier (existing id wins; else find-or-create by name).
+  let supplierId: string | null = d.supplierId && d.supplierId.length > 0 ? d.supplierId : null;
+  const newSupplierName = (d.newSupplierName ?? "").trim();
+  if (!supplierId && newSupplierName) {
+    const { data: existing } = await supabase
+      .from("suppliers")
+      .select("id, name")
+      .ilike("name", newSupplierName)
+      .maybeSingle();
+    if (existing) {
+      supplierId = existing.id;
+    } else {
+      const { data: created, error: supErr } = await supabase
+        .from("suppliers")
+        .insert({ organization_id: orgId, name: newSupplierName })
+        .select("id")
+        .single();
+      if (supErr) return { error: `Couldn't save supplier: ${supErr.message}` };
+      supplierId = created.id;
+    }
+  }
+
+  // 2. Receive each line, creating products as needed.
+  let received = 0;
+  for (const line of d.lines) {
+    let productId = line.productId && line.productId.length > 0 ? line.productId : null;
+
+    if (!productId) {
+      const name = (line.newProductName ?? "").trim();
+      const generic = (line.newGenericName ?? "").trim();
+      const { data: createdProduct, error: prodErr } = await supabase
+        .from("products")
+        .insert({
+          organization_id: orgId,
+          name,
+          generic_name: generic || null,
+        })
+        .select("id")
+        .single();
+      if (prodErr) return { error: `Couldn't create "${name}": ${prodErr.message}` };
+      productId = createdProduct.id;
+    }
+
+    const batchNumber = (line.batchNumber ?? "").trim();
+    const expiry = (line.expiryDate ?? "").trim();
+    const { error: rpcErr } = await supabase.rpc("receive_stock", {
+      p_branch: g.ctx.activeBranchId,
+      p_product: productId,
+      p_quantity: line.quantity,
+      p_cost_centavos: pesosToCentavos(line.unitCost),
+      ...(supplierId ? { p_supplier: supplierId } : {}),
+      ...(batchNumber ? { p_batch_number: batchNumber } : {}),
+      ...(expiry ? { p_expiry: expiry } : {}),
+    });
+    if (rpcErr) return { error: `Couldn't receive "${line.newProductName ?? productId}": ${rpcErr.message}` };
+    received += 1;
+  }
+
+  revalidatePath("/inventory");
+  revalidatePath("/suppliers");
+  revalidatePath("/alerts");
+  return { ok: true, received };
+}

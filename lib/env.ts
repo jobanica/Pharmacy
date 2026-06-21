@@ -25,6 +25,9 @@ const serverSchema = z.object({
   // Xendit (subscription scaffold). Optional in dev so the app boots without it.
   XENDIT_SECRET_KEY: z.string().optional(),
   XENDIT_WEBHOOK_TOKEN: z.string().optional(),
+  // Anthropic (AI receipt scanner). Optional — the feature is flagged OFF when
+  // the key is absent (see lib/ai/receipt.ts → aiReceiptEnabled()).
+  ANTHROPIC_API_KEY: z.string().optional(),
 });
 
 function readPublicEnv() {
@@ -56,6 +59,7 @@ export function serverEnv() {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     XENDIT_SECRET_KEY: process.env.XENDIT_SECRET_KEY,
     XENDIT_WEBHOOK_TOKEN: process.env.XENDIT_WEBHOOK_TOKEN,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   });
 
   if (!parsed.success) {
