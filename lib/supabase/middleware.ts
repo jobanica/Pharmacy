@@ -14,7 +14,7 @@ import { createServerClient } from "@supabase/ssr";
 import { publicEnv } from "@/lib/env";
 import type { Database } from "./types";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/accept-invite", "/auth", "/store", "/admin/login"];
+const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/accept-invite", "/auth", "/store", "/admin/login", "/forgot-password", "/reset-password"];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

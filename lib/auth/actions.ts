@@ -127,6 +127,38 @@ export async function acceptInviteAction(
   redirect("/dashboard");
 }
 
+/** Send a password-reset email. */
+export async function resetPasswordAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState | { ok: true }> {
+  const email = (formData.get("email") as string | null)?.trim();
+  if (!email) return { error: "Email is required" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/reset-password`,
+  });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+/** Update password after clicking a reset link (user must have a valid session from the email). */
+export async function updatePasswordAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState | { ok: true }> {
+  const password = (formData.get("password") as string | null)?.trim() ?? "";
+  const confirm = (formData.get("confirm") as string | null)?.trim() ?? "";
+  if (!password || password.length < 8) return { error: "Password must be at least 8 characters" };
+  if (password !== confirm) return { error: "Passwords do not match" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
 /** Persist the active branch selection (validated in getAppContext). */
 export async function setActiveBranchAction(branchId: string): Promise<void> {
   const cookieStore = await cookies();
