@@ -57,6 +57,6 @@ export const getPlatformAdmin = cache(async (): Promise<PlatformAdmin | null> =>
 /** Throws (redirects) when the caller is not a platform super-admin. */
 export async function requirePlatformAdmin(): Promise<PlatformAdmin> {
   const admin = await getPlatformAdmin();
-  if (!admin) redirect("/");
+  if (!admin) redirect("/admin/login");
   return admin;
 }
