@@ -14,7 +14,7 @@ export default async function InventoryPage() {
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
     "the active branch";
 
-  const [{ data: products }, { data: categories }, { data: onHand }, { data: suppliers }] =
+  const [{ data: products }, { data: categories }, { data: onHand }, { data: suppliers }, { data: batches }] =
     await Promise.all([
       supabase
         .from("products")
@@ -28,20 +28,42 @@ export default async function InventoryPage() {
         .select("product_id, on_hand")
         .eq("branch_id", ctx.activeBranchId),
       supabase.from("suppliers").select("id, name").order("name"),
+      // Batches in stock at this branch, soonest expiry first (nulls last) so the
+      // first one we see per product is the next to expire (FEFO).
+      supabase
+        .from("batches")
+        .select("product_id, batch_number, expiry_date")
+        .eq("branch_id", ctx.activeBranchId)
+        .gt("quantity", 0)
+        .order("expiry_date", { ascending: true, nullsFirst: false }),
     ]);
 
   const onHandById = new Map(
     (onHand ?? []).map((r) => [r.product_id, r.on_hand ?? 0]),
   );
 
+  // Nearest-expiry batch per product (first seen wins thanks to the ordering).
+  const nextBatchById = new Map<string, { batch_number: string | null; expiry_date: string | null }>();
+  for (const b of batches ?? []) {
+    if (b.product_id && !nextBatchById.has(b.product_id)) {
+      nextBatchById.set(b.product_id, {
+        batch_number: b.batch_number,
+        expiry_date: b.expiry_date,
+      });
+    }
+  }
+
   const rows: ProductWithCategory[] = (products ?? []).map((p) => {
     const { categories: cat, ...rest } = p as typeof p & {
       categories: { name: string } | null;
     };
+    const next = nextBatchById.get(rest.id);
     return {
       ...rest,
       category_name: cat?.name ?? null,
       on_hand: onHandById.get(rest.id) ?? 0,
+      next_batch_number: next?.batch_number ?? null,
+      next_expiry: next?.expiry_date ?? null,
     };
   });
 

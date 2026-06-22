@@ -16,11 +16,34 @@ import { ProductDialog, type ProductRow } from "./product-dialog";
 import { ScanReceiptDialog } from "./scan-receipt-dialog";
 import { setProductActive } from "@/lib/catalog/actions";
 import { formatCentavos } from "@/lib/money";
+import { daysUntil } from "@/lib/date";
 
 export type ProductWithCategory = ProductRow & {
   category_name: string | null;
   on_hand: number;
+  next_batch_number: string | null;
+  next_expiry: string | null;
 };
+
+function ExpiryCell({ date }: { date: string | null }) {
+  if (!date) return <span className="text-muted-foreground">—</span>;
+  const days = daysUntil(date);
+  let tone = "text-foreground";
+  let note = `${days}d`;
+  if (days < 0) {
+    tone = "text-destructive";
+    note = "expired";
+  } else if (days <= 30) {
+    tone = "text-destructive";
+  } else if (days <= 60) {
+    tone = "text-amber-600 dark:text-amber-500";
+  }
+  return (
+    <span className={cn("whitespace-nowrap", tone)}>
+      {date} <span className="text-xs">({note})</span>
+    </span>
+  );
+}
 type CategoryOption = { id: string; name: string };
 
 function ActiveToggle({ product }: { product: ProductWithCategory }) {
@@ -103,6 +126,20 @@ function buildColumns(
           </span>
         );
       },
+    },
+    {
+      id: "batch",
+      header: "Batch #",
+      cell: ({ row }) =>
+        row.original.next_batch_number ?? (
+          <span className="text-muted-foreground">—</span>
+        ),
+    },
+    {
+      accessorFn: (r) => r.next_expiry ?? "",
+      id: "expiry",
+      header: "Expiry",
+      cell: ({ row }) => <ExpiryCell date={row.original.next_expiry} />,
     },
     {
       accessorKey: "reorder_point",
