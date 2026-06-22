@@ -55,7 +55,7 @@ export const getAppContext = cache(
     const [{ data: membership }, { data: branches }] = await Promise.all([
       supabase
         .from("memberships")
-        .select("role, default_branch_id, organization_id, organizations(id, name, plan, settings)")
+        .select("role, default_branch_id, organization_id, organizations(id, name, plan, settings, status)")
         .eq("user_id", user.id)
         .eq("status", "active")
         .maybeSingle(),
@@ -75,7 +75,11 @@ export const getAppContext = cache(
       name: string;
       plan: string;
       settings: Json;
+      status: string;
     };
+
+    // A suspended subscriber (toggled by a platform admin) loses app access.
+    if (org.status !== "active") return null;
 
     // Pharmacists/cashiers are limited to their assigned branch.
     const accessible: BranchSummary[] =

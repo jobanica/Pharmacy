@@ -22,11 +22,13 @@ export function MobileNav({
   plan,
   appName,
   orgName,
+  isPlatformAdmin = false,
 }: {
   role: Role;
   plan: string;
   appName: string;
   orgName: string;
+  isPlatformAdmin?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   return (
@@ -49,7 +51,7 @@ export function MobileNav({
         <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
           <SidebarNav role={role} plan={plan} />
         </div>
-        <ShellFooter />
+        <ShellFooter isPlatformAdmin={isPlatformAdmin} />
       </SheetContent>
     </Sheet>
   );

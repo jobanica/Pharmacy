@@ -720,6 +720,24 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          email: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           barcode: string | null
