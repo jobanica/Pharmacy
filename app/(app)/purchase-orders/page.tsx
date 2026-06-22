@@ -16,10 +16,23 @@ import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatCentavos } from "@/lib/money";
 import type { PoStatus } from "@/lib/supabase/types";
+import { canUseInventory } from "@/lib/billing/plans";
+import { PlanUpsell } from "@/components/billing/plan-upsell";
 
 export default async function PurchaseOrdersPage() {
   const ctx = await requireAppContext();
   const supabase = await createClient();
+
+  if (!canUseInventory(ctx.organization.plan)) {
+    return (
+      <div className="grid gap-4">
+        <PlanUpsell
+          title="Purchase Orders"
+          description="Create and manage supplier purchase orders, receive stock, and track deliveries. Available on the Starter plan and above."
+        />
+      </div>
+    );
+  }
 
   const { data: pos } = await supabase
     .from("purchase_orders")

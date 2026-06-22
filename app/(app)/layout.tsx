@@ -38,7 +38,7 @@ export default async function AppLayout({
         <div className="px-5 pb-2 text-xs uppercase tracking-wider text-muted-foreground">
           {ctx.organization.name}
         </div>
-        <SidebarNav role={ctx.role} />
+        <SidebarNav role={ctx.role} plan={ctx.organization.plan} />
         <div className="mt-auto p-3">
           <UpgradeCard />
         </div>
@@ -50,6 +50,7 @@ export default async function AppLayout({
           <div className="flex items-center gap-3">
             <MobileNav
               role={ctx.role}
+              plan={ctx.organization.plan}
               appName={brand.name}
               orgName={ctx.organization.name}
             />

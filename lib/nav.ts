@@ -24,17 +24,19 @@ export type NavItem = {
   icon: LucideIcon;
   /** Capability required to view; undefined = visible to all members. */
   requires?: Capability;
+  /** Minimum plan required; "starter" means Starter or Pro. */
+  requiresPlan?: "starter" | "pro";
 };
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Point of Sale", href: "/pos", icon: ShoppingCart, requires: "create_sale" },
   { label: "Online Orders", href: "/orders", icon: ShoppingBag, requires: "create_sale" },
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requires: "view_reports" },
-  { label: "Inventory", href: "/inventory", icon: Package, requires: "manage_catalog" },
-  { label: "Alerts", href: "/alerts", icon: BellRing, requires: "manage_catalog" },
+  { label: "Inventory", href: "/inventory", icon: Package, requires: "manage_catalog", requiresPlan: "starter" },
+  { label: "Alerts", href: "/alerts", icon: BellRing, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Customers", href: "/customers", icon: Star, requires: "create_sale" },
-  { label: "Suppliers", href: "/suppliers", icon: Truck, requires: "manage_catalog" },
-  { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "manage_catalog" },
+  { label: "Suppliers", href: "/suppliers", icon: Truck, requires: "manage_catalog", requiresPlan: "starter" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Time & Attendance", href: "/hris", icon: Clock, requires: "manage_members" },
   { label: "Settings", href: "/settings", icon: Settings, requires: "manage_members" },
 ];

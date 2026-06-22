@@ -18,10 +18,12 @@ import type { Role } from "@/lib/auth/roles";
 /** Hamburger menu that opens the nav in a drawer on small screens. */
 export function MobileNav({
   role,
+  plan,
   appName,
   orgName,
 }: {
   role: Role;
+  plan: string;
   appName: string;
   orgName: string;
 }) {
@@ -44,7 +46,7 @@ export function MobileNav({
           <span className="text-xs text-muted-foreground">{orgName}</span>
         </SheetHeader>
         <div onClick={() => setOpen(false)}>
-          <SidebarNav role={role} />
+          <SidebarNav role={role} plan={plan} />
         </div>
       </SheetContent>
     </Sheet>
