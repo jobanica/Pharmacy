@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -135,9 +135,16 @@ export async function resetPasswordAction(
   const email = (formData.get("email") as string | null)?.trim();
   if (!email) return { error: "Email is required" };
 
+  // Build an absolute origin from the request so the email link points back to
+  // this deployment (the NEXT_PUBLIC_SITE_URL env var isn't configured here).
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const origin = host ? `${proto}://${host}` : "";
+
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/reset-password`,
+    redirectTo: `${origin}/auth/callback?next=/reset-password`,
   });
   if (error) return { error: error.message };
   return { ok: true };
