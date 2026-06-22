@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { PrintButton } from "@/components/pos/print-button";
+import { BluetoothPrintButton } from "@/components/pos/bluetooth-print-button";
 import { VoidSaleButton } from "@/components/pos/void-sale-button";
 import { AutoPrint } from "@/components/pos/auto-print";
+import type { ReceiptData } from "@/lib/escpos/receipt";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
@@ -85,6 +87,60 @@ export default async function ReceiptPage({
   const vat = vatBreakdown(vatableSales, tax.vatRatePct);
   const vatExemptSales = isVatExempt ? sale.total_centavos : 0;
 
+  const discountLabel =
+    sale.discount_type === "sc" ? "SC Discount (20%)" :
+    sale.discount_type === "pwd" ? "PWD Discount (20%)" :
+    sale.discount_centavos > 0 ? "Discount" : null;
+  const beneficiary =
+    (sale.discount_type === "sc" || sale.discount_type === "pwd") && sale.beneficiary_name
+      ? `${sale.discount_type === "sc" ? "SC" : "PWD"}: ${sale.beneficiary_name}${
+          sale.beneficiary_id_no ? ` - ${sale.beneficiary_id_no}` : ""
+        }`
+      : null;
+  const receiptPayments =
+    payments && payments.length > 0
+      ? payments
+      : [{ method: sale.payment_method, amount_centavos: sale.amount_tendered_centavos }];
+
+  const receiptData: ReceiptData = {
+    storeName: brand.name,
+    branchName: branch?.name ?? "",
+    header: brand.receipt.header,
+    footer: brand.receipt.footer,
+    tin: tax.tin,
+    address: tax.businessAddress,
+    receiptNumber: String(sale.receipt_number),
+    dateText: formatManila(sale.created_at),
+    cashier: cashier?.full_name ?? "—",
+    voided,
+    lines: lines.map((l) => ({
+      name: l.name,
+      qty: l.qty,
+      unit: l.unit,
+      unitPrice: l.unitPrice,
+      total: l.total,
+    })),
+    subtotal: sale.subtotal_centavos,
+    discount: sale.discount_centavos,
+    discountLabel,
+    beneficiary,
+    pointsRedeemed: sale.points_redeemed,
+    total: sale.total_centavos,
+    payments: receiptPayments.map((p) => ({ method: p.method, amount: p.amount_centavos })),
+    change: sale.change_centavos,
+    customer: customer
+      ? { name: customer.name, pointsEarned: sale.points_earned, pointsBalance: customer.points_balance }
+      : null,
+    vatableSales: vat.vatableCentavos,
+    vatAmount: vat.vatCentavos,
+    vatRatePct: tax.vatRatePct,
+    vatExemptSales,
+    accreditationNo: tax.accreditationNo,
+    permitNo: tax.permitNo,
+    atpNo: tax.atpNo,
+    paper: brand.receipt.paper,
+  };
+
   return (
     <div className="mx-auto max-w-md">
       <AutoPrint enabled={brand.receipt.autoPrint} />
@@ -98,6 +154,7 @@ export default async function ReceiptPage({
         </Link>
         <div className="flex gap-2">
           <PrintButton />
+          <BluetoothPrintButton receipt={receiptData} />
           {canVoid ? <VoidSaleButton saleId={sale.id} /> : null}
           {canVoid && !voided ? (
             <Link
