@@ -12,7 +12,7 @@ export type CustomerResult =
   | { error: string };
 export type Result = { ok: true } | { error: string };
 
-export const customerSchema = z.object({
+const customerSchema = z.object({
   name: z.string().min(1, "Name is required").max(120),
   phone: z.string().max(40).optional().or(z.literal("")),
   email: z.string().email("Enter a valid email").optional().or(z.literal("")),
@@ -71,7 +71,7 @@ export async function updateCustomer(id: string, input: CustomerInput): Promise<
   return { ok: true };
 }
 
-export const loyaltySettingsSchema = z.object({
+const loyaltySettingsSchema = z.object({
   pesoPerPoint: z.coerce
     .number({ error: "Enter a number" })
     .min(1, "Must be at least ₱1 per point")
