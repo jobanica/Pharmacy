@@ -1565,6 +1565,72 @@ export type Database = {
           },
         ]
       }
+      stocktakes: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string
+          status: "draft" | "approved"
+          notes: string | null
+          created_by: string | null
+          approved_by: string | null
+          created_at: string
+          approved_at: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id: string
+          status?: "draft" | "approved"
+          notes?: string | null
+          created_by?: string | null
+          approved_by?: string | null
+          created_at?: string
+          approved_at?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string
+          status?: "draft" | "approved"
+          notes?: string | null
+          created_by?: string | null
+          approved_by?: string | null
+          created_at?: string
+          approved_at?: string | null
+        }
+        Relationships: []
+      }
+      stocktake_items: {
+        Row: {
+          id: string
+          stocktake_id: string
+          organization_id: string
+          product_id: string
+          system_qty: number
+          counted_qty: number | null
+          unit_cost_centavos: number
+        }
+        Insert: {
+          id?: string
+          stocktake_id: string
+          organization_id: string
+          product_id: string
+          system_qty?: number
+          counted_qty?: number | null
+          unit_cost_centavos?: number
+        }
+        Update: {
+          id?: string
+          stocktake_id?: string
+          organization_id?: string
+          product_id?: string
+          system_qty?: number
+          counted_qty?: number | null
+          unit_cost_centavos?: number
+        }
+        Relationships: []
+      }
       stock_transfers: {
         Row: {
           id: string
@@ -1714,6 +1780,14 @@ export type Database = {
       process_return: {
         Args: { p_sale: string; p_items: Json; p_reason?: string }
         Returns: string
+      }
+      create_stocktake: {
+        Args: { p_branch: string; p_notes?: string }
+        Returns: string
+      }
+      approve_stocktake: {
+        Args: { p_stocktake: string }
+        Returns: undefined
       }
       create_transfer: {
         Args: { p_from_branch: string; p_to_branch: string; p_items: Json; p_notes?: string }
@@ -2018,6 +2092,7 @@ export const Constants = {
       po_status: ["draft", "sent", "received", "cancelled"],
       sale_status: ["completed", "voided"],
       shift_status: ["open", "closed"],
+      stocktake_status: ["draft", "approved"],
       transfer_status: ["in_transit", "received", "cancelled"],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
     },
