@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PrintLink } from "@/components/pos/print-button";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatCentavos } from "@/lib/money";
@@ -109,9 +110,7 @@ export default async function LogbookPage() {
 
       <p className="text-xs text-muted-foreground">
         Showing last 200 records. Use your browser&apos;s print function to produce a hard copy.{" "}
-        <button onClick={() => window.print()} className="underline">
-          Print now
-        </button>
+        <PrintLink />
       </p>
     </div>
   );
