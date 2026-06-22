@@ -17,6 +17,7 @@ import {
   BookOpen,
   Pill,
   Timer,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,6 +41,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Online Orders", href: "/orders", icon: ShoppingBag, requires: "create_sale" },
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, requires: "view_reports" },
   { label: "Inventory", href: "/inventory", icon: Package, requires: "manage_catalog", requiresPlan: "starter" },
+  { label: "Stock Transfers", href: "/inventory/transfers", icon: ArrowLeftRight, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Alerts", href: "/alerts", icon: BellRing, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Prescriptions", href: "/prescriptions", icon: Pill, requires: "create_sale" },
   { label: "Customers", href: "/customers", icon: Star, requires: "create_sale" },

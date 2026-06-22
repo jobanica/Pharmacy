@@ -1565,6 +1565,75 @@ export type Database = {
           },
         ]
       }
+      stock_transfers: {
+        Row: {
+          id: string
+          organization_id: string
+          from_branch_id: string
+          to_branch_id: string
+          status: "in_transit" | "received" | "cancelled"
+          notes: string | null
+          created_by: string | null
+          received_by: string | null
+          created_at: string
+          received_at: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          from_branch_id: string
+          to_branch_id: string
+          status?: "in_transit" | "received" | "cancelled"
+          notes?: string | null
+          created_by?: string | null
+          received_by?: string | null
+          created_at?: string
+          received_at?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          from_branch_id?: string
+          to_branch_id?: string
+          status?: "in_transit" | "received" | "cancelled"
+          notes?: string | null
+          created_by?: string | null
+          received_by?: string | null
+          created_at?: string
+          received_at?: string | null
+        }
+        Relationships: []
+      }
+      stock_transfer_items: {
+        Row: {
+          id: string
+          transfer_id: string
+          organization_id: string
+          product_id: string
+          source_batch_id: string | null
+          quantity: number
+          unit_cost_centavos: number
+        }
+        Insert: {
+          id?: string
+          transfer_id: string
+          organization_id: string
+          product_id: string
+          source_batch_id?: string | null
+          quantity: number
+          unit_cost_centavos?: number
+        }
+        Update: {
+          id?: string
+          transfer_id?: string
+          organization_id?: string
+          product_id?: string
+          source_batch_id?: string | null
+          quantity?: number
+          unit_cost_centavos?: number
+        }
+        Relationships: []
+      }
       sale_returns: {
         Row: {
           id: string
@@ -1645,6 +1714,14 @@ export type Database = {
       process_return: {
         Args: { p_sale: string; p_items: Json; p_reason?: string }
         Returns: string
+      }
+      create_transfer: {
+        Args: { p_from_branch: string; p_to_branch: string; p_items: Json; p_notes?: string }
+        Returns: string
+      }
+      receive_transfer: {
+        Args: { p_transfer: string }
+        Returns: undefined
       }
       close_shift: {
         Args: { p_shift: string; p_closing_cash?: number; p_notes?: string }
@@ -1941,6 +2018,7 @@ export const Constants = {
       po_status: ["draft", "sent", "received", "cancelled"],
       sale_status: ["completed", "voided"],
       shift_status: ["open", "closed"],
+      transfer_status: ["in_transit", "received", "cancelled"],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
     },
   },
