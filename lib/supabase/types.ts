@@ -1199,6 +1199,15 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      receive_po_item: {
+        Args: {
+          p_item: string
+          p_quantity: number
+          p_batch_number?: string
+          p_expiry?: string
+        }
+        Returns: undefined
+      }
       receive_purchase_order: {
         Args: { p_lines: Json; p_po: string }
         Returns: undefined
