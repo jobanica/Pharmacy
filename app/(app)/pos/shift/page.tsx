@@ -2,6 +2,7 @@ import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatCentavos } from "@/lib/money";
 import { formatManila } from "@/lib/date/index";
+import { readBrand } from "@/lib/branding";
 import { OpenShiftForm, CloseShiftForm } from "@/components/pos/shift-forms";
 
 export default async function ShiftPage() {
@@ -42,6 +43,8 @@ export default async function ShiftPage() {
   const liveCash = cashPayments?.reduce((s, p) => s + p.amount_centavos, 0) ?? 0;
   const expectedCash = openShift ? openShift.opening_cash_centavos + liveCash : 0;
 
+  const brand = readBrand(ctx.organization.settings);
+
   // Recent closed shifts.
   const { data: history } = await supabase
     .from("cashier_shifts")
@@ -77,7 +80,7 @@ export default async function ShiftPage() {
 
           <div>
             <h2 className="mb-3 text-sm font-medium">Close shift</h2>
-            <CloseShiftForm shiftId={openShift.id} />
+            <CloseShiftForm shiftId={openShift.id} printerType={brand.receipt.printerType} />
           </div>
         </div>
       ) : (

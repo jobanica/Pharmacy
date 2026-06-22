@@ -143,7 +143,11 @@ export default async function ReceiptPage({
 
   return (
     <div className="mx-auto max-w-md">
-      <AutoPrint enabled={brand.receipt.autoPrint} />
+      <AutoPrint
+        enabled={brand.receipt.autoPrint}
+        printerType={brand.receipt.printerType}
+        receipt={receiptData}
+      />
       <div className="mb-4 flex items-center justify-between print:hidden">
         <Link
           href="/pos"

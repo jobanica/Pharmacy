@@ -3,6 +3,8 @@ import type { Json } from "@/lib/supabase/types";
 
 export type ReceiptPaper = "58mm" | "80mm" | "A4";
 
+export type PrinterType = "bluetooth" | "browser";
+
 export type Brand = {
   name: string;
   logoUrl: string | null;
@@ -11,6 +13,7 @@ export type Brand = {
     footer: string | null;
     paper: ReceiptPaper;
     autoPrint: boolean;
+    printerType: PrinterType;
   };
 };
 
@@ -27,13 +30,14 @@ export function readBrand(settings: Json | null | undefined): Brand {
     branding?: {
       brand_name?: unknown;
       logo_path?: unknown;
-      receipt?: { header?: unknown; footer?: unknown; paper?: unknown; auto_print?: unknown };
+      receipt?: { header?: unknown; footer?: unknown; paper?: unknown; auto_print?: unknown; printer_type?: unknown };
     };
   };
   const b = root.branding ?? {};
   const r = b.receipt ?? {};
   const paper =
     r.paper === "58mm" || r.paper === "A4" ? (r.paper as ReceiptPaper) : "80mm";
+  const printerType: PrinterType = r.printer_type === "bluetooth" ? "bluetooth" : "browser";
   const logo = str(b.logo_path);
 
   return {
@@ -44,6 +48,7 @@ export function readBrand(settings: Json | null | undefined): Brand {
       footer: str(r.footer),
       paper,
       autoPrint: r.auto_print === true,
+      printerType,
     },
   };
 }

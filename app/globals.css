@@ -171,7 +171,9 @@
   .receipt-print,
   .receipt-print *,
   .print-area,
-  .print-area * {
+  .print-area *,
+  .shift-summary-print,
+  .shift-summary-print * {
     visibility: visible;
   }
   .receipt-print {
@@ -181,7 +183,8 @@
     width: 100%;
     border: none;
   }
-  .print-area {
+  .print-area,
+  .shift-summary-print {
     position: absolute;
     left: 0;
     top: 0;
