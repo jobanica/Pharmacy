@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Trash2, Loader2 } from "lucide-react";
+import { Upload, Trash2, Loader2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { updateBranding, uploadLogo, removeLogo } from "@/lib/branding/actions";
+import { PAPER_WIDTHS } from "@/lib/branding";
 
 type Paper = "58mm" | "80mm" | "A4";
 
@@ -177,13 +178,50 @@ export function BrandingSettings({
           </label>
         </div>
 
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={save} disabled={pending}>
             {pending ? <Loader2 className="size-4 animate-spin" /> : null}
             Save branding
           </Button>
+          <Button type="button" variant="outline" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            Test print
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Sends a sample receipt to your printer to check the connection and paper size.
+          </span>
         </div>
       </CardContent>
+
+      {/* Hidden on screen; the only thing that prints (see globals.css @media print). */}
+      <div className={`print-area hidden print:block ${PAPER_WIDTHS[form.paper]} mx-auto p-2`}>
+        <div className="text-center">
+          <div className="text-lg font-bold">{form.brandName.trim() || appName}</div>
+          {form.header.trim() ? (
+            <div className="whitespace-pre-line text-xs">{form.header}</div>
+          ) : null}
+        </div>
+        <div className="my-2 border-t border-dashed border-black" />
+        <div className="text-center text-xs font-semibold">*** TEST PRINT ***</div>
+        <div className="mt-2 space-y-1 text-xs">
+          <div className="flex justify-between"><span>1× Sample item A</span><span>₱25.00</span></div>
+          <div className="flex justify-between"><span>2× Sample item B</span><span>₱40.00</span></div>
+        </div>
+        <div className="my-2 border-t border-dashed border-black" />
+        <div className="flex justify-between text-sm font-bold">
+          <span>TOTAL</span>
+          <span>₱65.00</span>
+        </div>
+        <div className="my-2 border-t border-dashed border-black" />
+        <div className="text-center text-xs">
+          Printer connected successfully.
+          <br />
+          {new Date().toLocaleString("en-PH")}
+        </div>
+        {form.footer.trim() ? (
+          <div className="mt-2 whitespace-pre-line text-center text-xs">{form.footer}</div>
+        ) : null}
+      </div>
     </Card>
   );
 }
