@@ -17,8 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { scanReceipt } from "@/lib/ai/actions";
-import { receivePoItem } from "@/lib/purchase-orders/actions";
-import { formatCentavos } from "@/lib/money";
+import { receivePoItem, updatePoItemCost } from "@/lib/purchase-orders/actions";
+import { formatCentavos, centavosToPesos } from "@/lib/money";
 
 export type ReceiveItem = {
   id: string;
@@ -33,6 +33,7 @@ type LineState = {
   qty: string;
   batch: string;
   expiry: string;
+  cost: string;
   added: boolean;
   matched: boolean;
 };
@@ -88,6 +89,7 @@ export function ScanReceiveDialog({
           qty: String(Math.max(it.quantity_ordered - it.quantity_received, 0)),
           batch: "",
           expiry: "",
+          cost: it.unit_cost_centavos ? String(centavosToPesos(it.unit_cost_centavos)) : "",
           added: false,
           matched: false,
         },
@@ -132,6 +134,7 @@ export function ScanReceiveDialog({
           qty: sl.quantity > 0 ? String(sl.quantity) : patches[byName.id]?.qty ?? lines[byName.id]?.qty,
           batch: sl.batchNumber ?? "",
           expiry: sl.expiryDate ?? "",
+          ...(sl.unitCost > 0 ? { cost: String(sl.unitCost) } : {}),
           matched: true,
         };
       }
@@ -153,24 +156,63 @@ export function ScanReceiveDialog({
     }
   }
 
-  function add(it: ReceiveItem) {
-    const ln = lines[it.id];
-    setSavingId(it.id);
-    receivePoItem(it.id, poId, {
+  // Receive one line: apply a cost change (if any) then create the batch.
+  async function receiveOne(it: ReceiveItem, ln: LineState): Promise<boolean> {
+    if (!(Number(ln.qty) > 0)) return false;
+    const origCost = it.unit_cost_centavos ? String(centavosToPesos(it.unit_cost_centavos)) : "";
+    if (ln.cost.trim() !== "" && ln.cost.trim() !== origCost) {
+      const costRes = await updatePoItemCost(it.id, poId, ln.cost);
+      if ("error" in costRes) {
+        toast.error(costRes.error);
+        return false;
+      }
+    }
+    const res = await receivePoItem(it.id, poId, {
       quantityReceived: ln.qty,
       batchNumber: ln.batch,
       expiryDate: ln.expiry,
-    }).then((res) => {
+    });
+    if ("error" in res) {
+      toast.error(res.error);
+      return false;
+    }
+    update(it.id, { added: true });
+    return true;
+  }
+
+  function add(it: ReceiveItem) {
+    setSavingId(it.id);
+    receiveOne(it, lines[it.id]).then((ok) => {
       setSavingId(null);
-      if ("error" in res) {
-        toast.error(res.error);
-        return;
+      if (ok) {
+        toast.success(`Added ${it.product_name} to inventory`);
+        router.refresh();
       }
-      update(it.id, { added: true });
-      toast.success(`Added ${it.product_name} to inventory`);
-      router.refresh();
     });
   }
+
+  async function addAllMatched() {
+    const pending = items.filter((it) => lines[it.id].matched && !lines[it.id].added);
+    if (pending.length === 0) {
+      toast.error("No matched items left to add.");
+      return;
+    }
+    setSavingId("__all__");
+    let count = 0;
+    for (const it of pending) {
+      // Read latest state in case the user edited a field mid-run.
+      const ln = lines[it.id];
+      // eslint-disable-next-line no-await-in-loop
+      if (await receiveOne(it, ln)) count += 1;
+    }
+    setSavingId(null);
+    if (count > 0) {
+      toast.success(`Added ${count} item(s) to inventory`);
+      router.refresh();
+    }
+  }
+
+  const matchedPending = items.filter((it) => lines[it.id].matched && !lines[it.id].added).length;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -280,10 +322,29 @@ export function ScanReceiveDialog({
                         onChange={(e) => update(it.id, { expiry: e.target.value })}
                       />
                     </div>
+                    <div className="grid gap-1">
+                      <Label className="text-xs">
+                        Unit cost ₱
+                        {ln.matched &&
+                        ln.cost.trim() !== "" &&
+                        ln.cost.trim() !==
+                          (it.unit_cost_centavos ? String(centavosToPesos(it.unit_cost_centavos)) : "") ? (
+                          <span className="ml-1 text-amber-600 dark:text-amber-500">(from receipt)</span>
+                        ) : null}
+                      </Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={ln.cost}
+                        onChange={(e) => update(it.id, { cost: e.target.value })}
+                        className="w-28"
+                      />
+                    </div>
                     <Button
                       type="button"
                       onClick={() => add(it)}
-                      disabled={savingId === it.id || !(Number(ln.qty) > 0)}
+                      disabled={savingId !== null || !(Number(ln.qty) > 0)}
                     >
                       {savingId === it.id ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -298,6 +359,23 @@ export function ScanReceiveDialog({
             );
           })}
         </div>
+
+        {matchedPending > 0 ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={addAllMatched}
+            disabled={savingId !== null}
+            className="w-full"
+          >
+            {savingId === "__all__" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}
+            Add all matched ({matchedPending})
+          </Button>
+        ) : null}
 
         {unmatched.length > 0 ? (
           <p className="text-xs text-muted-foreground">
