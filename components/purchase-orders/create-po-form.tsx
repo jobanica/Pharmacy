@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,14 +15,24 @@ import { formatCentavos, pesosToCentavos } from "@/lib/money";
 
 type Product = { id: string; name: string };
 type Supplier = { id: string; name: string };
+type LowStockItem = {
+  product_id: string;
+  product_name: string;
+  unit: string;
+  on_hand: number;
+  reorder_point: number;
+  deficit: number;
+};
 type Line = { productId: string; quantityOrdered: string; unitCost: string };
 
 export function CreatePoForm({
   products,
   suppliers,
+  lowStock = [],
 }: {
   products: Product[];
   suppliers: Supplier[];
+  lowStock?: LowStockItem[];
 }) {
   const router = useRouter();
   const [supplierId, setSupplierId] = React.useState("");
@@ -42,6 +52,28 @@ export function CreatePoForm({
   function removeLine(i: number) {
     setLines((prev) => prev.filter((_, idx) => idx !== i));
   }
+
+  // Add a suggested low-stock item as a line (qty = how many short). Drops the
+  // pristine empty starter line so the list stays tidy.
+  function addSuggestion(item: LowStockItem) {
+    setLines((prev) => {
+      const cleaned = prev.filter(
+        (l) => !(l.productId === "" && l.quantityOrdered === "1" && l.unitCost === ""),
+      );
+      return [
+        ...cleaned,
+        {
+          productId: item.product_id,
+          quantityOrdered: String(Math.max(item.deficit, 1)),
+          unitCost: "",
+        },
+      ];
+    });
+  }
+
+  // Low-stock items not yet on the order.
+  const addedIds = new Set(lines.map((l) => l.productId).filter(Boolean));
+  const suggestions = lowStock.filter((s) => !addedIds.has(s.product_id));
 
   const estTotal = lines.reduce((s, l) => {
     const qty = Number(l.quantityOrdered) || 0;
@@ -103,6 +135,46 @@ export function CreatePoForm({
             />
           </div>
         </div>
+
+        {lowStock.length > 0 ? (
+          <div className="grid gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-500">
+              <TriangleAlert className="size-4" />
+              Low in inventory ({suggestions.length} to reorder)
+            </div>
+            {suggestions.length > 0 ? (
+              <div className="grid gap-1.5">
+                {suggestions.map((s) => (
+                  <div
+                    key={s.product_id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    <div>
+                      <span className="font-medium">{s.product_name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {s.on_hand} on hand · reorder at {s.reorder_point} · short{" "}
+                        {Math.max(s.deficit, 1)} {s.unit}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addSuggestion(s)}
+                    >
+                      <Plus className="size-4" />
+                      Add
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                All low-stock items have been added to this order.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         <div className="grid gap-2">
           <Label>Items</Label>
