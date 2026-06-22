@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/table";
 import { PoStatusBadge } from "@/components/purchase-orders/po-status-badge";
 import { PrintButton } from "@/components/pos/print-button";
+import { ScanReceiveDialog } from "@/components/purchase-orders/scan-receive-dialog";
+import { aiReceiptEnabled } from "@/lib/ai/receipt";
 import {
   HeaderEditor,
   AddItemForm,
@@ -105,6 +107,18 @@ export default async function PurchaseOrderDetailPage({
               {isSent ? (
                 <>
                   <StatusButton poId={po.id} to="cancelled" />
+                  <ScanReceiveDialog
+                    poId={po.id}
+                    aiEnabled={aiReceiptEnabled()}
+                    items={rows.map((r) => ({
+                      id: r.id,
+                      product_id: r.product_id,
+                      product_name: r.name,
+                      quantity_ordered: r.quantity_ordered,
+                      quantity_received: r.quantity_received,
+                      unit_cost_centavos: r.unit_cost_centavos,
+                    }))}
+                  />
                   <ReceiveDialog
                     poId={po.id}
                     items={rows.map((r) => ({

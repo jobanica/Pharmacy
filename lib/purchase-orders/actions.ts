@@ -175,6 +175,39 @@ export async function setPoStatus(
   return { ok: true };
 }
 
+const receivePoItemSchema = z.object({
+  quantityReceived: z.coerce.number().int().positive("Enter a quantity"),
+  batchNumber: z.string().max(64).optional().or(z.literal("")),
+  expiryDate: z.string().optional().or(z.literal("")),
+});
+export type ReceivePoItemInput = z.input<typeof receivePoItemSchema>;
+
+/** Receive a single PO line into inventory (used by the scan-and-add flow). */
+export async function receivePoItem(
+  itemId: string,
+  poId: string,
+  input: ReceivePoItemInput,
+): Promise<Result> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+  const parsed = receivePoItemSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("receive_po_item", {
+    p_item: itemId,
+    p_quantity: parsed.data.quantityReceived,
+    ...(parsed.data.batchNumber?.trim() ? { p_batch_number: parsed.data.batchNumber.trim() } : {}),
+    ...(parsed.data.expiryDate ? { p_expiry: parsed.data.expiryDate } : {}),
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/purchase-orders/${poId}`);
+  revalidatePath("/inventory");
+  revalidatePath("/alerts");
+  return { ok: true };
+}
+
 export async function receivePurchaseOrder(
   poId: string,
   input: ReceivePoInput,
