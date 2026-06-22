@@ -13,7 +13,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import type { BranchSummary } from "@/lib/auth/session";
 
 /**
@@ -50,10 +51,13 @@ export function BranchSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
-          <Button
-            variant="outline"
-            className="w-[200px] justify-between"
+          <button
+            type="button"
             disabled={isPending}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "w-[200px] justify-between",
+            )}
           />
         }
       >
