@@ -12,7 +12,10 @@ import { SubmitButton } from "@/components/auth/submit-button";
 type State = { error: string } | { ok: true } | null;
 
 export default function ForgotPasswordPage() {
-  const [state, formAction] = useActionState<State, FormData>(resetPasswordAction, null);
+  const [state, formAction] = useActionState<State, FormData>(
+    resetPasswordAction as (state: State, payload: FormData) => Promise<State>,
+    null,
+  );
 
   if (state && "ok" in state) {
     return (

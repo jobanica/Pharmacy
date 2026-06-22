@@ -11,7 +11,10 @@ import { SubmitButton } from "@/components/auth/submit-button";
 type State = { error: string } | { ok: true } | null;
 
 export default function ResetPasswordPage() {
-  const [state, formAction] = useActionState<State, FormData>(updatePasswordAction, null);
+  const [state, formAction] = useActionState<State, FormData>(
+    updatePasswordAction as (state: State, payload: FormData) => Promise<State>,
+    null,
+  );
 
   if (state && "ok" in state) {
     return (
