@@ -16,6 +16,7 @@ const brandingSchema = z.object({
   receiptFooter: z.string().max(400).optional().or(z.literal("")),
   paper: z.enum(["58mm", "80mm", "A4"]),
   autoPrint: z.boolean(),
+  printerType: z.enum(["bluetooth", "browser"]).default("browser"),
 });
 export type BrandingInput = z.infer<typeof brandingSchema>;
 
@@ -43,6 +44,7 @@ export async function updateBranding(input: BrandingInput): Promise<Result> {
       footer: parsed.data.receiptFooter?.trim() || null,
       paper: parsed.data.paper,
       auto_print: parsed.data.autoPrint,
+        printer_type: parsed.data.printerType,
     },
   };
 

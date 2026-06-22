@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Upload, Trash2, Loader2, Printer } from "lucide-react";
+import { Upload, Trash2, Loader2, Printer, Bluetooth, Monitor } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { updateBranding, uploadLogo, removeLogo } from "@/lib/branding/actions";
 import { PAPER_WIDTHS } from "@/lib/branding";
 
 type Paper = "58mm" | "80mm" | "A4";
+type PrinterType = "bluetooth" | "browser";
 
 export function BrandingSettings({
   appName,
@@ -24,6 +25,7 @@ export function BrandingSettings({
   footer,
   paper,
   autoPrint,
+  printerType,
 }: {
   appName: string;
   brandName: string;
@@ -32,6 +34,7 @@ export function BrandingSettings({
   footer: string;
   paper: Paper;
   autoPrint: boolean;
+  printerType: PrinterType;
 }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
@@ -41,6 +44,7 @@ export function BrandingSettings({
     footer,
     paper,
     autoPrint,
+    printerType,
   });
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -52,6 +56,7 @@ export function BrandingSettings({
         receiptFooter: form.footer,
         paper: form.paper,
         autoPrint: form.autoPrint,
+        printerType: form.printerType,
       });
       if ("error" in res) toast.error(res.error);
       else {
@@ -156,26 +161,60 @@ export function BrandingSettings({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-6">
+        <div className="grid gap-4">
           <div className="grid gap-2">
-            <Label>Paper width</Label>
-            <select
-              value={form.paper}
-              onChange={(e) => setForm((f) => ({ ...f, paper: e.target.value as Paper }))}
-              className="h-9 rounded-md border bg-transparent px-3 text-sm"
-            >
-              <option value="58mm">58mm (thermal)</option>
-              <option value="80mm">80mm (thermal)</option>
-              <option value="A4">A4 (full page)</option>
-            </select>
+            <Label>Printer connection</Label>
+            <div className="flex gap-3">
+              {(["browser", "bluetooth"] as PrinterType[]).map((pt) => (
+                <button
+                  key={pt}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, printerType: pt }))}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-colors ${
+                    form.printerType === pt
+                      ? "border-primary bg-primary/10 text-primary font-medium"
+                      : "border-muted hover:bg-muted/50"
+                  }`}
+                >
+                  {pt === "bluetooth"
+                    ? <Bluetooth className="size-4" />
+                    : <Monitor className="size-4" />}
+                  {pt === "bluetooth" ? "Bluetooth (ESC/POS)" : "USB / Wi-Fi (browser dialog)"}
+                </button>
+              ))}
+            </div>
+            {form.printerType === "bluetooth" ? (
+              <p className="text-xs text-muted-foreground">
+                Prints directly to a paired Bluetooth thermal printer using ESC/POS. Requires Chrome or Edge on desktop/Android.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Opens the OS print dialog. Works with any USB, Wi-Fi, or network printer.
+              </p>
+            )}
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <Switch
-              checked={form.autoPrint}
-              onCheckedChange={(v) => setForm((f) => ({ ...f, autoPrint: v }))}
-            />
-            Auto-print receipt after a sale
-          </label>
+
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="grid gap-2">
+              <Label>Paper width</Label>
+              <select
+                value={form.paper}
+                onChange={(e) => setForm((f) => ({ ...f, paper: e.target.value as Paper }))}
+                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+              >
+                <option value="58mm">58mm (thermal)</option>
+                <option value="80mm">80mm (thermal)</option>
+                <option value="A4">A4 (full page)</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={form.autoPrint}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, autoPrint: v }))}
+              />
+              Auto-print receipt after a sale
+            </label>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

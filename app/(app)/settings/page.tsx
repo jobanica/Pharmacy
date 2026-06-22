@@ -201,6 +201,7 @@ export default async function SettingsPage() {
           footer={brand.receipt.footer ?? ""}
           paper={brand.receipt.paper}
           autoPrint={brand.receipt.autoPrint}
+          printerType={brand.receipt.printerType}
         />
       ) : null}
 
