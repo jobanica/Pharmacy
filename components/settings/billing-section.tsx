@@ -7,15 +7,17 @@ import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PLANS, type PlanId } from "@/lib/billing/plans";
+import { PLANS, type Plan, type PlanId } from "@/lib/billing/plans";
 import { startCheckout, cancelSubscription } from "@/lib/billing/actions";
 import { formatCentavos } from "@/lib/money";
 
 export function BillingSection({
+  plans = PLANS,
   currentPlan,
   status,
   enabled,
 }: {
+  plans?: Plan[];
   currentPlan: string;
   status: string;
   enabled: boolean;
@@ -52,7 +54,7 @@ export function BillingSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-3">
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const isCurrent = plan.id === currentPlan;
           return (
             <div

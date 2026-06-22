@@ -30,6 +30,41 @@ export async function setOrgPlan(input: z.input<typeof planSchema>): Promise<Adm
   return { ok: true };
 }
 
+const planEditSchema = z.object({
+  id: z.enum(["free", "starter", "pro"]),
+  name: z.string().trim().min(1, "Name is required"),
+  priceCentavos: z.number().int().min(0, "Price cannot be negative"),
+  description: z.string().trim().default(""),
+  features: z.array(z.string().trim().min(1)).default([]),
+});
+
+/** Edit a plan's display (name, price, description, features). */
+export async function updatePlan(
+  input: z.input<typeof planEditSchema>,
+): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  const parsed = planEditSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { id, name, priceCentavos, description, features } = parsed.data;
+
+  const db = createServiceClient();
+  const { error } = await db.from("plan_overrides").upsert({
+    id,
+    name,
+    price_centavos: priceCentavos,
+    description,
+    features,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { error: error.message };
+
+  // Reflect the change everywhere plans are shown.
+  revalidatePath("/admin/plans");
+  revalidatePath("/");
+  revalidatePath("/settings/billing");
+  return { ok: true };
+}
+
 const statusSchema = z.object({
   orgId: z.string().uuid(),
   status: z.enum(["active", "suspended"]),

@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/brand/brand-mark";
 import { publicEnv } from "@/lib/env";
-import { PLANS } from "@/lib/billing/plans";
+import { getPlans } from "@/lib/billing/get-plans";
 import { formatCentavos } from "@/lib/money";
 
 const BENEFITS = [
@@ -58,7 +58,8 @@ const BUCKETS = [
   { label: "≤90 days", value: 12, tone: "text-teal-300" },
 ];
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const PLANS = await getPlans();
   const appName = publicEnv.NEXT_PUBLIC_APP_NAME;
 
   return (

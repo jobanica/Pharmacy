@@ -982,6 +982,33 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_overrides: {
+        Row: {
+          id: string
+          name: string
+          price_centavos: number
+          description: string
+          features: Json
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          name: string
+          price_centavos?: number
+          description?: string
+          features?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          price_centavos?: number
+          description?: string
+          features?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       drug_interactions: {
         Row: {
           id: string
