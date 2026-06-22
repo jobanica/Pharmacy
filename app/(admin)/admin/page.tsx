@@ -1,8 +1,7 @@
 import { Building2, CheckCircle2, Wallet, MessageSquare } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { SubscribersTable } from "@/components/admin/subscribers-table";
 import { requirePlatformAdmin } from "@/lib/admin/auth";
 import { getAdminOverview, getRecentFeedback } from "@/lib/admin/data";
 import { formatCentavos } from "@/lib/money";
@@ -11,21 +10,18 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   await requirePlatformAdmin();
-  const [{ subscribers, stats }, feedback] = await Promise.all([
+  const [{ stats }, feedback] = await Promise.all([
     getAdminOverview(),
-    getRecentFeedback(30),
+    getRecentFeedback(5),
   ]);
 
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Subscribers</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage every pharmacy on Reseta — plans, status, and usage.
-        </p>
+        <h1 className="text-2xl font-semibold">Overview</h1>
+        <p className="text-sm text-muted-foreground">Platform health at a glance.</p>
       </div>
 
-      {/* Platform stats */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={<Building2 className="size-5" />} label="Total subscribers" value={String(stats.totalOrgs)} />
         <Stat icon={<CheckCircle2 className="size-5" />} label="Active" value={String(stats.activeOrgs)} />
@@ -43,55 +39,17 @@ export default async function AdminPage() {
         />
       </div>
 
-      {/* Plan breakdown */}
       <div className="flex flex-wrap gap-2 text-sm">
+        <span className="text-muted-foreground text-sm">By plan:</span>
         <Badge variant="outline">Free: {stats.byPlan.free}</Badge>
         <Badge variant="outline" className="text-sky-400">Starter: {stats.byPlan.starter}</Badge>
         <Badge variant="outline" className="text-violet-400">Pro: {stats.byPlan.pro}</Badge>
       </div>
-
-      <SubscribersTable subscribers={subscribers} />
-
-      {/* Feedback */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent feedback</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {feedback.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No feedback yet.</p>
-          ) : (
-            <div className="divide-y">
-              {feedback.map((f) => (
-                <div key={f.id} className="grid gap-1 py-3">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Badge variant="outline" className="capitalize">{f.category}</Badge>
-                    <span>{f.orgName ?? "—"}</span>
-                    {f.userEmail ? <span>· {f.userEmail}</span> : null}
-                    <span className="ml-auto">{new Date(f.createdAt).toLocaleDateString("en-PH")}</span>
-                  </div>
-                  <p className="whitespace-pre-line text-sm">{f.message}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
 
-function Stat({
-  icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint?: string;
-}) {
+function Stat({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint?: string }) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
