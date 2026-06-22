@@ -28,6 +28,9 @@ const serverSchema = z.object({
   // Anthropic (AI receipt scanner). Optional — the feature is flagged OFF when
   // the key is absent (see lib/ai/receipt.ts → aiReceiptEnabled()).
   ANTHROPIC_API_KEY: z.string().optional(),
+  // Comma-separated emails granted platform super-admin access (/admin).
+  // Optional; the platform_admins table is the other source of admins.
+  PLATFORM_ADMIN_EMAILS: z.string().optional(),
 });
 
 function readPublicEnv() {
@@ -60,6 +63,7 @@ export function serverEnv() {
     XENDIT_SECRET_KEY: process.env.XENDIT_SECRET_KEY,
     XENDIT_WEBHOOK_TOKEN: process.env.XENDIT_WEBHOOK_TOKEN,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS,
   });
 
   if (!parsed.success) {

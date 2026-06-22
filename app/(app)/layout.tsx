@@ -8,6 +8,7 @@ import { UserMenu } from "@/components/shell/user-menu";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { UpgradeCard } from "@/components/shell/upgrade-card";
 import { ShellFooter } from "@/components/shell/shell-footer";
+import { getPlatformAdmin } from "@/lib/admin/auth";
 import { readBrand } from "@/lib/branding";
 
 export default async function AppLayout({
@@ -17,6 +18,7 @@ export default async function AppLayout({
 }) {
   const ctx = await requireAppContext();
   const brand = readBrand(ctx.organization.settings);
+  const isPlatformAdmin = Boolean(await getPlatformAdmin());
 
   return (
     <div className="dark app-shell grid min-h-screen grid-rows-[auto_1fr] text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
@@ -43,7 +45,7 @@ export default async function AppLayout({
         <div className="mt-auto p-3">
           <UpgradeCard />
         </div>
-        <ShellFooter />
+        <ShellFooter isPlatformAdmin={isPlatformAdmin} />
       </aside>
 
       {/* Main column */}
@@ -55,6 +57,7 @@ export default async function AppLayout({
               plan={ctx.organization.plan}
               appName={brand.name}
               orgName={ctx.organization.name}
+              isPlatformAdmin={isPlatformAdmin}
             />
             <BranchSwitcher
               branches={ctx.branches}
