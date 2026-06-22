@@ -943,6 +943,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string | null
+          user_id: string | null
+          type: "low_stock" | "expiry_warning" | "transfer_received" | "return_processed" | "shift_variance"
+          title: string
+          body: string | null
+          resource_id: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id?: string | null
+          user_id?: string | null
+          type: "low_stock" | "expiry_warning" | "transfer_received" | "return_processed" | "shift_variance"
+          title: string
+          body?: string | null
+          resource_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string | null
+          user_id?: string | null
+          type?: "low_stock" | "expiry_warning" | "transfer_received" | "return_processed" | "shift_variance"
+          title?: string
+          body?: string | null
+          resource_id?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       drug_interactions: {
         Row: {
           id: string
@@ -1845,6 +1884,10 @@ export type Database = {
         Args: { p_transfer: string }
         Returns: undefined
       }
+      generate_alert_notifications: {
+        Args: { p_branch: string }
+        Returns: number
+      }
       check_interactions: {
         Args: { p_product_ids: string[] }
         Returns: {
@@ -1996,6 +2039,7 @@ export type Database = {
         | "cancelled"
       controlled_substance_level: "dangerous" | "regulated" | "precursor"
       interaction_severity: "minor" | "moderate" | "major"
+      notification_type: "low_stock" | "expiry_warning" | "transfer_received" | "return_processed" | "shift_variance"
       payment_method: "cash"
       po_status: "draft" | "sent" | "received" | "cancelled"
       sale_status: "completed" | "voided"

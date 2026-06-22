@@ -10,6 +10,8 @@ import { UpgradeCard } from "@/components/shell/upgrade-card";
 import { ShellFooter } from "@/components/shell/shell-footer";
 import { getPlatformAdmin } from "@/lib/admin/auth";
 import { readBrand } from "@/lib/branding";
+import { NotificationBell } from "@/components/notifications/notification-bell";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
   children,
@@ -19,6 +21,15 @@ export default async function AppLayout({
   const ctx = await requireAppContext();
   const brand = readBrand(ctx.organization.settings);
   const isPlatformAdmin = Boolean(await getPlatformAdmin());
+
+  const supabase = await createClient();
+  const { data: recentNotifs } = await supabase
+    .from("notifications")
+    .select("id, type, title, body, read_at, created_at")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const notifications = recentNotifs ?? [];
+  const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   return (
     <div className="dark app-shell grid min-h-screen grid-rows-[auto_1fr] text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
@@ -64,11 +75,14 @@ export default async function AppLayout({
               activeBranchId={ctx.activeBranchId}
             />
           </div>
-          <UserMenu
-            fullName={ctx.user.fullName}
-            email={ctx.user.email}
-            role={ctx.role}
-          />
+          <div className="flex items-center gap-1">
+            <NotificationBell notifications={notifications} unreadCount={unreadCount} />
+            <UserMenu
+              fullName={ctx.user.fullName}
+              email={ctx.user.email}
+              role={ctx.role}
+            />
+          </div>
         </header>
         <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
       </div>
