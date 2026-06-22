@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   ResponsiveContainer,
   ComposedChart,
+  BarChart,
   Bar,
   Line,
   PieChart,
@@ -94,6 +95,130 @@ export function SalesAnalytics({ data }: { data: SalesPoint[] }) {
             <Line type="monotone" dataKey="count" stroke="#E879F9" strokeWidth={2.5} dot={{ r: 3, fill: "#E879F9" }} />
           </ComposedChart>
         </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+const TOOLTIP_STYLE = {
+  background: "#211a3e",
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: 12,
+  color: "#fff",
+};
+
+const CAT_COLORS = ["#7C3AED", "#2DD4BF", "#E879F9", "#F59E0B", "#3B82F6", "#EF4444", "#10B981", "#F97316"];
+
+export type CategoryPoint = { name: string; revenue: number };
+
+export function CategoryChart({ data }: { data: CategoryPoint[] }) {
+  if (!data.length) return null;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+      <h3 className="mb-4 font-semibold">Revenue by category</h3>
+      <div className="h-56 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey="name" width={100} fontSize={11} tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.5)" />
+            <Tooltip
+              cursor={{ fill: "rgba(255,255,255,0.05)" }}
+              contentStyle={TOOLTIP_STYLE}
+              formatter={(v) => [peso(Number(v)), "Revenue"]}
+            />
+            <Bar dataKey="revenue" radius={[0, 6, 6, 0]} maxBarSize={22}>
+              {data.map((_, i) => (
+                <Cell key={i} fill={CAT_COLORS[i % CAT_COLORS.length]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export type HourPoint = { hour: number; count: number; revenue: number };
+
+export function HourlyChart({ data }: { data: HourPoint[] }) {
+  const rows = data.map((d) => ({
+    label: d.hour === 0 ? "12am" : d.hour < 12 ? `${d.hour}am` : d.hour === 12 ? "12pm" : `${d.hour - 12}pm`,
+    count: d.count,
+    revenue: d.revenue / 100,
+  }));
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+      <h3 className="mb-4 font-semibold">Peak hours</h3>
+      <div className="h-48 w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} margin={{ top: 0, right: 4, bottom: 0, left: -28 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+            <XAxis dataKey="label" fontSize={9} tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.4)" interval={1} />
+            <YAxis fontSize={10} tickLine={false} axisLine={false} stroke="rgba(255,255,255,0.4)" />
+            <Tooltip
+              cursor={{ fill: "rgba(255,255,255,0.05)" }}
+              contentStyle={TOOLTIP_STYLE}
+              formatter={(v, name) => name === "revenue" ? [peso(Number(v)), "Revenue"] : [Number(v), "Sales"]}
+            />
+            <Bar dataKey="count" fill="#7C3AED" radius={[4, 4, 0, 0]} maxBarSize={18} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+export type PaymentPoint = { method: string; total: number };
+
+const METHOD_COLORS: Record<string, string> = {
+  cash: "#2DD4BF",
+  card: "#7C3AED",
+  gcash: "#3B82F6",
+  maya: "#10B981",
+  other: "#F59E0B",
+};
+
+export function PaymentMethodChart({ data }: { data: PaymentPoint[] }) {
+  if (!data.length) return null;
+  const total = data.reduce((s, d) => s + d.total, 0);
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+      <h3 className="mb-2 font-semibold">Payment methods</h3>
+      <div className="flex items-center gap-4">
+        <div className="relative size-32 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="total" nameKey="method" innerRadius={38} outerRadius={56} paddingAngle={2} strokeWidth={0}>
+                {data.map((d, i) => (
+                  <Cell key={d.method} fill={METHOD_COLORS[d.method] ?? CAT_COLORS[i % CAT_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={TOOLTIP_STYLE}
+                formatter={(v) => [peso(Number(v) / 100), ""]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex-1 space-y-1.5 text-sm">
+          {data.map((d) => (
+            <div key={d.method} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span
+                  className="size-2.5 rounded-full"
+                  style={{ background: METHOD_COLORS[d.method] ?? "#888" }}
+                />
+                <span className="capitalize text-muted-foreground">{d.method}</span>
+              </div>
+              <div className="text-right">
+                <span className="font-medium">{peso(d.total / 100)}</span>
+                <span className="ml-1 text-xs text-muted-foreground">
+                  {total > 0 ? `${((d.total / total) * 100).toFixed(0)}%` : ""}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

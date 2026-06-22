@@ -4,7 +4,17 @@ import { Coins, Receipt, Boxes, TrendingUp, type LucideIcon } from "lucide-react
 
 import { Badge } from "@/components/ui/badge";
 import { DashboardFilters } from "@/components/dashboard/filters";
-import { SalesAnalytics, MarginDonut, type SalesPoint } from "@/components/dashboard/charts";
+import {
+  SalesAnalytics,
+  MarginDonut,
+  CategoryChart,
+  HourlyChart,
+  PaymentMethodChart,
+  type SalesPoint,
+  type CategoryPoint,
+  type HourPoint,
+  type PaymentPoint,
+} from "@/components/dashboard/charts";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
@@ -51,12 +61,33 @@ export default async function DashboardPage({
   const { data: sales } = await salesQuery;
 
   const saleIds = (sales ?? []).map((s) => s.id);
-  const { data: items } = saleIds.length
-    ? await supabase
-        .from("sale_items")
-        .select("quantity, line_total_centavos, unit_cost_centavos, products(name)")
-        .in("sale_id", saleIds)
-    : { data: [] as never[] };
+
+  // Expiry risk: batches expiring within 90 days at the active branch.
+  const ninetyDaysOut = new Date();
+  ninetyDaysOut.setDate(ninetyDaysOut.getDate() + 90);
+
+  const [{ data: items }, { data: allPayments }, { data: expiryBatches }] = await Promise.all([
+    saleIds.length
+      ? supabase
+          .from("sale_items")
+          .select("quantity, line_total_centavos, unit_cost_centavos, products(name, categories(name))")
+          .in("sale_id", saleIds)
+      : Promise.resolve({ data: [] as never[] }),
+    saleIds.length
+      ? supabase
+          .from("sale_payments")
+          .select("method, amount_centavos")
+          .in("sale_id", saleIds)
+      : Promise.resolve({ data: [] as never[] }),
+    supabase
+      .from("batches")
+      .select("id, expiry_date, quantity, products(name)")
+      .eq("branch_id", ctx.activeBranchId)
+      .gt("quantity", 0)
+      .not("expiry_date", "is", null)
+      .lte("expiry_date", ninetyDaysOut.toISOString().slice(0, 10))
+      .order("expiry_date", { ascending: true }),
+  ]);
 
   const revenue = (sales ?? []).reduce((s, r) => s + r.total_centavos, 0);
   const transactions = sales?.length ?? 0;
@@ -81,17 +112,61 @@ export default async function DashboardPage({
   }));
 
   const prodAgg = new Map<string, { total: number; qty: number }>();
+  const catAgg = new Map<string, number>();
   for (const it of items ?? []) {
-    const name = (it as { products: { name: string } | null }).products?.name ?? "Unknown";
+    const row = it as { products: { name: string; categories: { name: string } | null } | null };
+    const name = row.products?.name ?? "Unknown";
+    const cat = row.products?.categories?.name ?? "Uncategorized";
     const cur = prodAgg.get(name) ?? { total: 0, qty: 0 };
     cur.total += it.line_total_centavos;
     cur.qty += it.quantity;
     prodAgg.set(name, cur);
+    catAgg.set(cat, (catAgg.get(cat) ?? 0) + it.line_total_centavos);
   }
   const topProducts = [...prodAgg.entries()]
     .map(([name, v]) => ({ name, ...v }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 5);
+
+  const categoryData: CategoryPoint[] = [...catAgg.entries()]
+    .map(([name, revenue]) => ({ name, revenue: revenue / 100 }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 8);
+
+  // Hourly distribution of sales in local time (Manila UTC+8).
+  const hourlyAgg = new Map<number, { count: number; revenue: number }>();
+  for (const s of sales ?? []) {
+    const hour = (new Date(s.created_at).getUTCHours() + 8) % 24;
+    const cur = hourlyAgg.get(hour) ?? { count: 0, revenue: 0 };
+    cur.count += 1;
+    cur.revenue += s.total_centavos;
+    hourlyAgg.set(hour, cur);
+  }
+  const hourlyData: HourPoint[] = Array.from({ length: 24 }, (_, h) => ({
+    hour: h,
+    count: hourlyAgg.get(h)?.count ?? 0,
+    revenue: hourlyAgg.get(h)?.revenue ?? 0,
+  }));
+
+  // Payment method totals.
+  const methodAgg = new Map<string, number>();
+  for (const p of allPayments ?? []) {
+    methodAgg.set(p.method, (methodAgg.get(p.method) ?? 0) + p.amount_centavos);
+  }
+  const paymentData: PaymentPoint[] = [...methodAgg.entries()]
+    .map(([method, total]) => ({ method, total }))
+    .sort((a, b) => b.total - a.total);
+
+  // Expiry risk buckets.
+  const today30 = new Date(); today30.setDate(today30.getDate() + 30);
+  const today60 = new Date(); today60.setDate(today60.getDate() + 60);
+  const expiring30 = (expiryBatches ?? []).filter((b) => new Date(b.expiry_date!) <= today30);
+  const expiring60 = (expiryBatches ?? []).filter(
+    (b) => new Date(b.expiry_date!) > today30 && new Date(b.expiry_date!) <= today60,
+  );
+  const expiring90 = (expiryBatches ?? []).filter(
+    (b) => new Date(b.expiry_date!) > today60,
+  );
 
   const recent = [...(sales ?? [])]
     .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
@@ -148,6 +223,49 @@ export default async function DashboardPage({
           <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
             <MarginDonut marginPct={marginPct} revenue={revenue / 100} profit={profit / 100} />
             <SalesAnalytics data={series} />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <CategoryChart data={categoryData} />
+            <HourlyChart data={hourlyData} />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <PaymentMethodChart data={paymentData} />
+
+            {/* Expiry risk */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+              <h3 className="mb-3 font-semibold">Expiry risk (active branch)</h3>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "≤ 30 days", items: expiring30, color: "text-destructive" },
+                  { label: "31–60 days", items: expiring60, color: "text-amber-400" },
+                  { label: "61–90 days", items: expiring90, color: "text-yellow-300" },
+                ].map(({ label, items, color }) => (
+                  <div key={label} className="rounded-xl bg-white/5 p-3 text-center">
+                    <div className={`text-2xl font-bold ${color}`}>{items.length}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{label}</div>
+                  </div>
+                ))}
+              </div>
+              {expiring30.length > 0 ? (
+                <div className="mt-3 space-y-1">
+                  {expiring30.slice(0, 5).map((b) => (
+                    <div key={b.id} className="flex items-center justify-between text-xs">
+                      <span className="truncate text-muted-foreground">
+                        {(b as { products: { name: string } | null }).products?.name ?? "—"}
+                      </span>
+                      <span className="shrink-0 text-destructive">{b.expiry_date}</span>
+                    </div>
+                  ))}
+                  {expiring30.length > 5 ? (
+                    <p className="text-xs text-muted-foreground">+{expiring30.length - 5} more</p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted-foreground">No batches expiring within 30 days.</p>
+              )}
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
