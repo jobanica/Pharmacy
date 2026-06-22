@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, PackagePlus, Pencil } from "lucide-react";
+import { ArrowLeft, PackagePlus, Pencil, Printer } from "lucide-react";
 
 import {
   Card,
@@ -135,20 +135,36 @@ export default async function ProductDetailPage({
               {product.is_active ? "" : " · Inactive"}
             </p>
           </div>
-          {canManage ? (
-            <ReceiveStockDialog
-              productId={product.id}
-              productName={product.name}
-              branchName={branchName}
-              suppliers={suppliers ?? []}
-              trigger={
-                <Button>
-                  <PackagePlus className="size-4" />
-                  Receive stock
-                </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              render={
+                <Link
+                  href={`/labels/${product.id}?branchId=${ctx.activeBranchId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
               }
-            />
-          ) : null}
+            >
+              <Printer className="size-4" />
+              Print labels
+            </Button>
+            {canManage ? (
+              <ReceiveStockDialog
+                productId={product.id}
+                productName={product.name}
+                branchName={branchName}
+                suppliers={suppliers ?? []}
+                trigger={
+                  <Button>
+                    <PackagePlus className="size-4" />
+                    Receive stock
+                  </Button>
+                }
+              />
+            ) : null}
+          </div>
         </div>
       </div>
 
