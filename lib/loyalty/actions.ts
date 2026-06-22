@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { requireAppContext } from "@/lib/auth/session";
+import type { Json } from "@/lib/supabase/types";
 
 export type CustomerResult =
   | { ok: true; customer: { id: string; name: string; phone: string | null; points_balance: number } }
@@ -67,6 +68,44 @@ export async function updateCustomer(id: string, input: CustomerInput): Promise<
   }
   revalidatePath("/customers");
   revalidatePath(`/customers/${id}`);
+  return { ok: true };
+}
+
+export const loyaltySettingsSchema = z.object({
+  pesoPerPoint: z.coerce
+    .number({ error: "Enter a number" })
+    .min(1, "Must be at least ₱1 per point")
+    .max(100000, "That's too high"),
+});
+export type LoyaltySettingsInput = z.input<typeof loyaltySettingsSchema>;
+
+/** Owner/manager: set how many pesos of net spend earn one loyalty point. */
+export async function updateLoyaltySettings(
+  input: LoyaltySettingsInput,
+): Promise<Result> {
+  const ctx = await requireAppContext();
+  if (ctx.role !== "owner" && ctx.role !== "manager") {
+    return { error: "Only an owner or manager can change loyalty settings" };
+  }
+  const parsed = loyaltySettingsSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const current = (ctx.organization.settings ?? {}) as Record<string, unknown>;
+  const { error } = await supabase
+    .from("organizations")
+    .update({
+      settings: {
+        ...current,
+        loyalty: { peso_per_point: parsed.data.pesoPerPoint },
+      } as Json,
+    })
+    .eq("id", ctx.organization.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/", "layout");
+  revalidatePath("/settings");
+  revalidatePath("/pos");
   return { ok: true };
 }
 

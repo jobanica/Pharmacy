@@ -23,7 +23,9 @@ import { InviteForm } from "@/components/settings/invite-form";
 import { CopyInviteLink } from "@/components/settings/copy-invite-link";
 import { BillingSection } from "@/components/settings/billing-section";
 import { BrandingSettings } from "@/components/settings/branding-settings";
+import { LoyaltySettings } from "@/components/settings/loyalty-settings";
 import { readBrand } from "@/lib/branding";
+import { readLoyalty } from "@/lib/loyalty/settings";
 import { publicEnv } from "@/lib/env";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -55,6 +57,8 @@ export default async function SettingsPage() {
   const isOwner = ctx.role === "owner";
   const subscription = isOwner ? await getSubscription() : null;
   const brand = readBrand(ctx.organization.settings);
+  const loyalty = readLoyalty(ctx.organization.settings);
+  const canManageLoyalty = ctx.role === "owner" || ctx.role === "manager";
 
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
@@ -191,6 +195,10 @@ export default async function SettingsPage() {
           paper={brand.receipt.paper}
           autoPrint={brand.receipt.autoPrint}
         />
+      ) : null}
+
+      {canManageLoyalty ? (
+        <LoyaltySettings pesoPerPoint={loyalty.pesoPerPoint} />
       ) : null}
 
       {isOwner ? (
