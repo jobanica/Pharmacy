@@ -32,7 +32,7 @@ export default async function InventoryPage() {
       supabase
         .from("products")
         .select(
-          "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, categories(name)",
+          "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, drug_class, storage_conditions, contraindications, side_effects, controlled_level, categories(name)",
         )
         .order("name", { ascending: true }),
       supabase.from("categories").select("id, name").order("name"),

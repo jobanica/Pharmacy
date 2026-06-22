@@ -16,6 +16,7 @@ import { formatCentavos, pesosToCentavos, centavosToPesos } from "@/lib/money";
 import type { DiscountType, PaymentMethodValue } from "@/lib/validation/pos";
 import { PAYMENT_METHODS } from "@/lib/validation/pos";
 import { RxDialog } from "@/components/pos/rx-dialog";
+import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
 export type SellableProduct = {
   id: string;
@@ -69,6 +70,21 @@ export function PosTerminal({
   const [rxDialogOpen, setRxDialogOpen] = React.useState(false);
   const [prescriptionId, setPrescriptionId] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
+  const [interactions, setInteractions] = React.useState<
+    { name_a: string; name_b: string; severity: "minor" | "moderate" | "major"; description: string | null }[]
+  >([]);
+
+  const lines = [...cart.values()];
+
+  React.useEffect(() => {
+    const ids = lines.map((l) => l.product.id);
+    if (ids.length < 2) { setInteractions([]); return; }
+    const supabase = createBrowserClient();
+    supabase.rpc("check_interactions", { p_product_ids: ids }).then(({ data }) => {
+      setInteractions(data ?? []);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
 
   const results = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -131,7 +147,6 @@ export function PosTerminal({
     }
   }
 
-  const lines = [...cart.values()];
   const subtotal = lines.reduce(
     (s, l) => s + l.product.default_price_centavos * l.qty,
     0,
@@ -455,6 +470,19 @@ export function PosTerminal({
               className={change < 0 ? "text-destructive" : "text-emerald-600"}
             />
           </div>
+
+          {interactions.length > 0 ? (
+            <div className="rounded-md border border-red-500/40 bg-red-500/5 p-2 text-xs space-y-1">
+              <p className="font-semibold text-red-400">⚠ Drug interaction{interactions.length > 1 ? "s" : ""} detected</p>
+              {interactions.map((ix, i) => (
+                <p key={i} className="text-red-300">
+                  <span className="font-medium">{ix.name_a}</span> + <span className="font-medium">{ix.name_b}</span>
+                  {" "}— <span className="capitalize">{ix.severity}</span>
+                  {ix.description ? `: ${ix.description}` : ""}
+                </p>
+              ))}
+            </div>
+          ) : null}
 
           {hasRxItems ? (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs">

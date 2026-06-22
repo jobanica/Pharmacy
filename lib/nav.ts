@@ -19,6 +19,7 @@ import {
   Timer,
   ArrowLeftRight,
   ClipboardCheck,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Stocktake", href: "/inventory/stocktake", icon: ClipboardCheck, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Alerts", href: "/alerts", icon: BellRing, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Prescriptions", href: "/prescriptions", icon: Pill, requires: "create_sale" },
+  { label: "Drug Interactions", href: "/clinical/interactions", icon: Zap, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Customers", href: "/customers", icon: Star, requires: "create_sale" },
   { label: "Suppliers", href: "/suppliers", icon: Truck, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "manage_catalog", requiresPlan: "starter" },

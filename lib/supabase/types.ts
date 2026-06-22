@@ -943,12 +943,50 @@ export type Database = {
         }
         Relationships: []
       }
+      drug_interactions: {
+        Row: {
+          id: string
+          organization_id: string
+          product_id_a: string
+          product_id_b: string
+          severity: "minor" | "moderate" | "major"
+          description: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          product_id_a: string
+          product_id_b: string
+          severity?: "minor" | "moderate" | "major"
+          description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          product_id_a?: string
+          product_id_b?: string
+          severity?: "minor" | "moderate" | "major"
+          description?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           barcode: string | null
           category_id: string | null
           created_at: string
           default_price_centavos: number
+          drug_class: string | null
+          storage_conditions: string | null
+          contraindications: string | null
+          side_effects: string | null
+          controlled_level: Database["public"]["Enums"]["controlled_substance_level"] | null
           generic_name: string | null
           id: string
           is_active: boolean
@@ -964,6 +1002,11 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           default_price_centavos?: number
+          drug_class?: string | null
+          storage_conditions?: string | null
+          contraindications?: string | null
+          side_effects?: string | null
+          controlled_level?: Database["public"]["Enums"]["controlled_substance_level"] | null
           generic_name?: string | null
           id?: string
           is_active?: boolean
@@ -979,6 +1022,11 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           default_price_centavos?: number
+          drug_class?: string | null
+          storage_conditions?: string | null
+          contraindications?: string | null
+          side_effects?: string | null
+          controlled_level?: Database["public"]["Enums"]["controlled_substance_level"] | null
           generic_name?: string | null
           id?: string
           is_active?: boolean
@@ -1797,6 +1845,17 @@ export type Database = {
         Args: { p_transfer: string }
         Returns: undefined
       }
+      check_interactions: {
+        Args: { p_product_ids: string[] }
+        Returns: {
+          product_id_a: string
+          product_id_b: string
+          severity: "minor" | "moderate" | "major"
+          description: string | null
+          name_a: string
+          name_b: string
+        }[]
+      }
       close_shift: {
         Args: { p_shift: string; p_closing_cash?: number; p_notes?: string }
         Returns: Json
@@ -1935,6 +1994,8 @@ export type Database = {
         | "out_for_delivery"
         | "completed"
         | "cancelled"
+      controlled_substance_level: "dangerous" | "regulated" | "precursor"
+      interaction_severity: "minor" | "moderate" | "major"
       payment_method: "cash"
       po_status: "draft" | "sent" | "received" | "cancelled"
       sale_status: "completed" | "voided"

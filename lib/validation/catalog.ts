@@ -8,6 +8,9 @@ const optionalText = (max: number) =>
     .optional()
     .or(z.literal(""));
 
+export const CONTROLLED_LEVELS = ["dangerous", "regulated", "precursor"] as const;
+export type ControlledLevel = (typeof CONTROLLED_LEVELS)[number];
+
 export const productSchema = z.object({
   name: z.string().min(1, "Product name is required").max(200),
   genericName: optionalText(200),
@@ -20,6 +23,12 @@ export const productSchema = z.object({
   // Selling price entered in pesos; converted to integer centavos at the action.
   price: z.coerce.number().min(0, "Price cannot be negative").default(0),
   isActive: z.boolean().default(true),
+  // Clinical fields
+  drugClass: optionalText(200),
+  storageConditions: optionalText(500),
+  contraindications: optionalText(2000),
+  sideEffects: optionalText(2000),
+  controlledLevel: z.enum(CONTROLLED_LEVELS).optional().nullable(),
 });
 export type ProductInput = z.output<typeof productSchema>;
 export type ProductFormValues = z.input<typeof productSchema>;

@@ -23,6 +23,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import {
   productSchema,
+  CONTROLLED_LEVELS,
   type ProductInput,
   type ProductFormValues,
 } from "@/lib/validation/catalog";
@@ -42,6 +43,11 @@ export type ProductRow = {
   reorder_point: number;
   default_price_centavos: number;
   is_active: boolean;
+  drug_class: string | null;
+  storage_conditions: string | null;
+  contraindications: string | null;
+  side_effects: string | null;
+  controlled_level: "dangerous" | "regulated" | "precursor" | null;
 };
 
 type CategoryOption = { id: string; name: string };
@@ -260,6 +266,47 @@ export function ProductDialog({
             )}
           />
 
+          <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="text-sm font-medium">Clinical information (optional)</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Drug class">
+                <Input {...form.register("drugClass")} placeholder="e.g. NSAID, antibiotic" />
+              </Field>
+              <Field label="Controlled substance">
+                <select
+                  {...form.register("controlledLevel")}
+                  className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                >
+                  <option value="">Not controlled</option>
+                  {CONTROLLED_LEVELS.map((l) => (
+                    <option key={l} value={l}>
+                      {l.charAt(0).toUpperCase() + l.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Storage conditions">
+              <Input {...form.register("storageConditions")} placeholder="e.g. Store below 25°C" />
+            </Field>
+            <Field label="Contraindications">
+              <textarea
+                {...form.register("contraindications")}
+                rows={2}
+                placeholder="Known contraindications..."
+                className="w-full rounded-md border bg-transparent px-3 py-2 text-sm resize-none"
+              />
+            </Field>
+            <Field label="Side effects">
+              <textarea
+                {...form.register("sideEffects")}
+                rows={2}
+                placeholder="Common side effects..."
+                className="w-full rounded-md border bg-transparent px-3 py-2 text-sm resize-none"
+              />
+            </Field>
+          </div>
+
           {!isEdit ? (
             <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <p className="text-sm font-medium">Opening stock (optional)</p>
@@ -325,6 +372,11 @@ function defaultsFor(product?: ProductRow): ProductFormValues {
     reorderPoint: product?.reorder_point ?? 0,
     price: product ? centavosToPesos(product.default_price_centavos) : 0,
     isActive: product?.is_active ?? true,
+    drugClass: product?.drug_class ?? "",
+    storageConditions: product?.storage_conditions ?? "",
+    contraindications: product?.contraindications ?? "",
+    sideEffects: product?.side_effects ?? "",
+    controlledLevel: product?.controlled_level ?? null,
   };
 }
 
