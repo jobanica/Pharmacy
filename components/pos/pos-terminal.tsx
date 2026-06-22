@@ -14,6 +14,7 @@ import { completeSale } from "@/lib/pos/actions";
 import { CustomerPicker, type Customer } from "@/components/pos/customer-picker";
 import { formatCentavos, pesosToCentavos, centavosToPesos } from "@/lib/money";
 import type { DiscountType } from "@/lib/validation/pos";
+import { RxDialog } from "@/components/pos/rx-dialog";
 
 export type SellableProduct = {
   id: string;
@@ -24,6 +25,7 @@ export type SellableProduct = {
   unit: string;
   default_price_centavos: number;
   on_hand: number;
+  requires_prescription: boolean;
 };
 
 type CartLine = { product: SellableProduct; qty: number };
@@ -54,6 +56,8 @@ export function PosTerminal({
   const [tendered, setTendered] = React.useState("");
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [redeemPoints, setRedeemPoints] = React.useState(0);
+  const [rxDialogOpen, setRxDialogOpen] = React.useState(false);
+  const [prescriptionId, setPrescriptionId] = React.useState<string | null>(null);
   const [pending, startTransition] = React.useTransition();
 
   const results = React.useMemo(() => {
@@ -151,7 +155,9 @@ export function PosTerminal({
   const total = Math.max(subtotal - discountCentavos - redeemCentavos, 0);
   const tenderedCentavos = tendered ? pesosToCentavos(tendered) : 0;
   const change = tenderedCentavos - total;
-  const canComplete = lines.length > 0 && change >= 0 && !pending;
+  const hasRxItems = lines.some((l) => l.product.requires_prescription);
+  const rxSatisfied = !hasRxItems || prescriptionId != null;
+  const canComplete = lines.length > 0 && change >= 0 && rxSatisfied && !pending;
 
   function checkout() {
     if (!canComplete) return;
@@ -165,6 +171,7 @@ export function PosTerminal({
         discountType,
         beneficiaryIdNo: beneficiaryIdNo || null,
         beneficiaryName: beneficiaryName || null,
+        prescriptionId,
       });
       if ("error" in res) {
         toast.error(res.error);
@@ -393,6 +400,22 @@ export function PosTerminal({
             />
           </div>
 
+          {hasRxItems ? (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-2 text-xs">
+              {prescriptionId ? (
+                <span className="text-emerald-400">✓ Prescription recorded</span>
+              ) : (
+                <button
+                  type="button"
+                  className="text-amber-400 underline"
+                  onClick={() => setRxDialogOpen(true)}
+                >
+                  ⚠ Rx required — tap to enter prescription
+                </button>
+              )}
+            </div>
+          ) : null}
+
           <div className="flex gap-2">
             <Button
               variant="outline"
@@ -405,16 +428,30 @@ export function PosTerminal({
                 setDiscountType("none");
                 setBeneficiaryIdNo("");
                 setBeneficiaryName("");
+                setPrescriptionId(null);
               }}
               disabled={lines.length === 0 || pending}
             >
               Clear
             </Button>
-            <Button className="flex-1" onClick={checkout} disabled={!canComplete}>
+            <Button
+              className="flex-1"
+              onClick={hasRxItems && !prescriptionId ? () => setRxDialogOpen(true) : checkout}
+              disabled={lines.length === 0 || (change < 0 && tenderedCentavos > 0) || pending}
+            >
               {pending ? <Loader2 className="size-4 animate-spin" /> : null}
-              Complete sale
+              {hasRxItems && !prescriptionId ? "Enter Prescription" : "Complete sale"}
             </Button>
           </div>
+
+          <RxDialog
+            open={rxDialogOpen}
+            onSave={(id) => {
+              setPrescriptionId(id);
+              setRxDialogOpen(false);
+            }}
+            onCancel={() => setRxDialogOpen(false)}
+          />
           <button
             type="button"
             className="text-xs text-muted-foreground underline"

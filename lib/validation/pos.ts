@@ -19,5 +19,6 @@ export const completeSaleSchema = z.object({
   discountType: z.enum(DISCOUNT_TYPES).default("none"),
   beneficiaryIdNo: z.string().max(50).optional().nullable(),
   beneficiaryName: z.string().max(200).optional().nullable(),
+  prescriptionId: z.string().uuid().optional().nullable(),
 });
 export type CompleteSaleInput = z.infer<typeof completeSaleSchema>;

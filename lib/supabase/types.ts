@@ -720,6 +720,51 @@ export type Database = {
         }
         Relationships: []
       }
+      prescriptions: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string
+          rx_number: string | null
+          patient_name: string
+          patient_dob: string | null
+          doctor_name: string
+          doctor_prc_no: string | null
+          date_issued: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id: string
+          rx_number?: string | null
+          patient_name: string
+          patient_dob?: string | null
+          doctor_name: string
+          doctor_prc_no?: string | null
+          date_issued: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string
+          rx_number?: string | null
+          patient_name?: string
+          patient_dob?: string | null
+          doctor_name?: string
+          doctor_prc_no?: string | null
+          date_issued?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       or_sequences: {
         Row: { organization_id: string; last_number: number }
         Insert: { organization_id: string; last_number?: number }
@@ -1158,6 +1203,7 @@ export type Database = {
           status: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos: number
           total_centavos: number
+          prescription_id: string | null
           vat_exempt_centavos: number
           voided_at: string | null
           voided_by: string | null
@@ -1182,6 +1228,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
           total_centavos?: number
+          prescription_id?: string | null
           vat_exempt_centavos?: number
           voided_at?: string | null
           voided_by?: string | null
@@ -1205,6 +1252,7 @@ export type Database = {
           receipt_number?: string
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
+          prescription_id?: string | null
           total_centavos?: number
           vat_exempt_centavos?: number
           voided_at?: string | null
@@ -1475,6 +1523,7 @@ export type Database = {
           p_discount_type?: string
           p_beneficiary_id_no?: string
           p_beneficiary_name?: string
+          p_prescription_id?: string
         }
         Returns: string
       }

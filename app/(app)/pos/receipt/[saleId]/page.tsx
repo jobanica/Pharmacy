@@ -25,7 +25,7 @@ export default async function ReceiptPage({
   const { data: sale } = await supabase
     .from("sales")
     .select(
-      "id, branch_id, receipt_number, cashier_id, subtotal_centavos, discount_centavos, total_centavos, payment_method, amount_tendered_centavos, change_centavos, status, created_at, customer_id, points_earned, points_redeemed, discount_type, beneficiary_id_no, beneficiary_name, vat_exempt_centavos",
+      "id, branch_id, receipt_number, cashier_id, subtotal_centavos, discount_centavos, total_centavos, payment_method, amount_tendered_centavos, change_centavos, status, created_at, customer_id, points_earned, points_redeemed, discount_type, beneficiary_id_no, beneficiary_name, vat_exempt_centavos, prescription_id",
     )
     .eq("id", saleId)
     .maybeSingle();
@@ -37,6 +37,14 @@ export default async function ReceiptPage({
         .from("customers")
         .select("name, points_balance")
         .eq("id", sale.customer_id)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: prescription } = sale.prescription_id
+    ? await supabase
+        .from("prescriptions")
+        .select("patient_name, patient_dob, doctor_name, doctor_prc_no, date_issued, rx_number")
+        .eq("id", sale.prescription_id)
         .maybeSingle()
     : { data: null };
 
@@ -195,6 +203,17 @@ export default async function ReceiptPage({
           {tax.permitNo ? <div>Permit No.: {tax.permitNo}</div> : null}
           {tax.atpNo ? <div>ATP No.: {tax.atpNo}</div> : null}
         </div>
+
+        {prescription ? (
+          <div className="mt-2 border-t border-dashed pt-2 text-xs">
+            <div className="text-center font-semibold">Prescription</div>
+            <Row label="Patient" value={prescription.patient_name} />
+            <Row label="Doctor" value={`Dr. ${prescription.doctor_name}`} />
+            {prescription.doctor_prc_no ? <Row label="PRC No." value={prescription.doctor_prc_no} /> : null}
+            <Row label="Date issued" value={prescription.date_issued} />
+            {prescription.rx_number ? <Row label="Rx No." value={prescription.rx_number} /> : null}
+          </div>
+        ) : null}
 
         <div className="mt-3 whitespace-pre-line border-t border-dashed pt-2 text-center text-xs">
           {brand.receipt.footer ?? "Thank you for shopping!"}
