@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCentavos } from "@/lib/money";
 import { formatManila, manilaBusinessDay, manilaDayRange } from "@/lib/date";
 import { readLoyalty } from "@/lib/loyalty/settings";
+import { readTax } from "@/lib/tax/settings";
 import { canUseInventory } from "@/lib/billing/plans";
 
 export default async function PosPage() {
@@ -77,6 +78,7 @@ export default async function PosPage() {
         branchName={branchName}
         customers={customers ?? []}
         pesoPerPoint={readLoyalty(ctx.organization.settings).pesoPerPoint}
+        vatRatePct={readTax(ctx.organization.settings).vatRatePct}
         tracksInventory={tracksInventory}
       />
 

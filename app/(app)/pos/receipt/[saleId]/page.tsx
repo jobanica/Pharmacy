@@ -25,7 +25,7 @@ export default async function ReceiptPage({
   const { data: sale } = await supabase
     .from("sales")
     .select(
-      "id, branch_id, receipt_number, cashier_id, subtotal_centavos, discount_centavos, total_centavos, payment_method, amount_tendered_centavos, change_centavos, status, created_at, customer_id, points_earned, points_redeemed",
+      "id, branch_id, receipt_number, cashier_id, subtotal_centavos, discount_centavos, total_centavos, payment_method, amount_tendered_centavos, change_centavos, status, created_at, customer_id, points_earned, points_redeemed, discount_type, beneficiary_id_no, beneficiary_name, vat_exempt_centavos",
     )
     .eq("id", saleId)
     .maybeSingle();
@@ -71,7 +71,10 @@ export default async function ReceiptPage({
   const canVoid = can(ctx.role, "void_sale") && !voided;
   const brand = readBrand(ctx.organization.settings);
   const tax = readTax(ctx.organization.settings);
-  const vat = vatBreakdown(sale.total_centavos, tax.vatRatePct);
+  const isVatExempt = (sale.vat_exempt_centavos ?? 0) > 0;
+  const vatableSales = isVatExempt ? 0 : sale.total_centavos;
+  const vat = vatBreakdown(vatableSales, tax.vatRatePct);
+  const vatExemptSales = isVatExempt ? sale.total_centavos : 0;
 
   return (
     <div className="mx-auto max-w-md">
@@ -146,7 +149,20 @@ export default async function ReceiptPage({
         <div className="mt-2 border-t border-dashed pt-2">
           <Row label="Subtotal" value={formatCentavos(sale.subtotal_centavos)} />
           {sale.discount_centavos > 0 ? (
-            <Row label="Discount" value={`-${formatCentavos(sale.discount_centavos)}`} />
+            <Row
+              label={
+                sale.discount_type === "sc" ? "SC Discount (20%)" :
+                sale.discount_type === "pwd" ? "PWD Discount (20%)" :
+                "Discount"
+              }
+              value={`-${formatCentavos(sale.discount_centavos)}`}
+            />
+          ) : null}
+          {(sale.discount_type === "sc" || sale.discount_type === "pwd") && sale.beneficiary_name ? (
+            <div className="text-xs text-muted-foreground">
+              {sale.discount_type === "sc" ? "SC" : "PWD"}: {sale.beneficiary_name}
+              {sale.beneficiary_id_no ? ` — ${sale.beneficiary_id_no}` : ""}
+            </div>
           ) : null}
           {sale.points_redeemed > 0 ? (
             <Row label={`Points (${sale.points_redeemed})`} value={`-${formatCentavos(sale.points_redeemed * 100)}`} />
@@ -168,9 +184,9 @@ export default async function ReceiptPage({
         ) : null}
 
         <div className="mt-2 border-t border-dashed pt-2 text-xs">
-          <Row label={`VATable Sales`} value={formatCentavos(vat.vatableCentavos)} />
+          <Row label="VATable Sales" value={formatCentavos(vat.vatableCentavos)} />
           <Row label={`VAT Amount (${tax.vatRatePct}%)`} value={formatCentavos(vat.vatCentavos)} />
-          <Row label="VAT-Exempt Sales" value={formatCentavos(0)} />
+          <Row label="VAT-Exempt Sales" value={formatCentavos(vatExemptSales)} />
           <Row label="Zero-Rated Sales" value={formatCentavos(0)} />
         </div>
 

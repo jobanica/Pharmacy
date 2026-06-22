@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { completeSale } from "@/lib/pos/actions";
 import { CustomerPicker, type Customer } from "@/components/pos/customer-picker";
 import { formatCentavos, pesosToCentavos, centavosToPesos } from "@/lib/money";
+import type { DiscountType } from "@/lib/validation/pos";
 
 export type SellableProduct = {
   id: string;
@@ -32,12 +33,14 @@ export function PosTerminal({
   branchName,
   customers,
   pesoPerPoint,
+  vatRatePct = 12,
   tracksInventory = true,
 }: {
   products: SellableProduct[];
   branchName: string;
   customers: Customer[];
   pesoPerPoint: number;
+  vatRatePct?: number;
   /** When false (Free plan), products sell without stock limits. */
   tracksInventory?: boolean;
 }) {
@@ -45,6 +48,9 @@ export function PosTerminal({
   const [search, setSearch] = React.useState("");
   const [cart, setCart] = React.useState<Map<string, CartLine>>(new Map());
   const [discount, setDiscount] = React.useState("");
+  const [discountType, setDiscountType] = React.useState<DiscountType>("none");
+  const [beneficiaryIdNo, setBeneficiaryIdNo] = React.useState("");
+  const [beneficiaryName, setBeneficiaryName] = React.useState("");
   const [tendered, setTendered] = React.useState("");
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [redeemPoints, setRedeemPoints] = React.useState(0);
@@ -116,10 +122,27 @@ export function PosTerminal({
     (s, l) => s + l.product.default_price_centavos * l.qty,
     0,
   );
-  const discountCentavos = Math.min(
-    discount ? pesosToCentavos(discount) : 0,
-    subtotal,
-  );
+
+  // SC/PWD: server-authoritative formula mirrored here for preview.
+  // discount = price - round(price / (1+vat/100) * 0.80), summed per item×qty.
+  const scPwdDiscount = React.useMemo(() => {
+    if (discountType !== "sc" && discountType !== "pwd") return 0;
+    const divisor = 1 + vatRatePct / 100;
+    return lines.reduce(
+      (s, l) =>
+        s +
+        (l.product.default_price_centavos -
+          Math.round((l.product.default_price_centavos / divisor) * 0.8)) *
+          l.qty,
+      0,
+    );
+  }, [discountType, lines, vatRatePct]);
+
+  const discountCentavos =
+    discountType === "sc" || discountType === "pwd"
+      ? Math.min(scPwdDiscount, subtotal)
+      : Math.min(discount ? pesosToCentavos(discount) : 0, subtotal);
+
   const maxRedeemable = customer
     ? Math.min(customer.points_balance, Math.floor((subtotal - discountCentavos) / 100))
     : 0;
@@ -139,6 +162,9 @@ export function PosTerminal({
         amountTenderedCentavos: tenderedCentavos,
         customerId: customer?.id ?? null,
         redeemPoints: effectiveRedeem,
+        discountType,
+        beneficiaryIdNo: beneficiaryIdNo || null,
+        beneficiaryName: beneficiaryName || null,
       });
       if ("error" in res) {
         toast.error(res.error);
@@ -269,18 +295,66 @@ export function PosTerminal({
 
           <div className="grid gap-2 border-t pt-3 text-sm">
             <Row label="Subtotal" value={formatCentavos(subtotal)} />
+
+            {/* Discount type */}
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="discount">Discount (₱)</Label>
-              <Input
-                id="discount"
-                type="number"
-                min="0"
-                step="0.01"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-                className="h-8 w-28 text-right"
-              />
+              <Label>Discount type</Label>
+              <select
+                value={discountType}
+                onChange={(e) => {
+                  setDiscountType(e.target.value as DiscountType);
+                  setDiscount("");
+                }}
+                className="h-8 rounded-md border bg-transparent px-2 text-sm"
+              >
+                <option value="none">None</option>
+                <option value="sc">Senior Citizen (SC)</option>
+                <option value="pwd">PWD</option>
+                <option value="manual">Manual</option>
+              </select>
             </div>
+
+            {(discountType === "sc" || discountType === "pwd") ? (
+              <div className="grid gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/5 p-2">
+                <p className="text-[11px] text-amber-400">
+                  {discountType === "sc" ? "RA 9994" : "RA 10754"}: 20% off net price + VAT exempt
+                </p>
+                <Input
+                  value={beneficiaryName}
+                  onChange={(e) => setBeneficiaryName(e.target.value)}
+                  placeholder={discountType === "sc" ? "Senior citizen name" : "PWD name"}
+                  className="h-8 text-sm"
+                />
+                <Input
+                  value={beneficiaryIdNo}
+                  onChange={(e) => setBeneficiaryIdNo(e.target.value)}
+                  placeholder={discountType === "sc" ? "OSCA ID no." : "PWD ID no."}
+                  className="h-8 text-sm"
+                />
+              </div>
+            ) : null}
+
+            {discountType === "manual" ? (
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="discount">Discount (₱)</Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
+                  className="h-8 w-28 text-right"
+                />
+              </div>
+            ) : null}
+            {discountCentavos > 0 ? (
+              <Row
+                label={discountType === "sc" ? "SC Discount (20%)" : discountType === "pwd" ? "PWD Discount (20%)" : "Discount"}
+                value={`−${formatCentavos(discountCentavos)}`}
+                className="text-amber-300"
+              />
+            ) : null}
             {effectiveRedeem > 0 ? (
               <Row
                 label={`Points redeemed (${effectiveRedeem})`}
@@ -328,6 +402,9 @@ export function PosTerminal({
                 setTendered("");
                 setCustomer(null);
                 setRedeemPoints(0);
+                setDiscountType("none");
+                setBeneficiaryIdNo("");
+                setBeneficiaryName("");
               }}
               disabled={lines.length === 0 || pending}
             >

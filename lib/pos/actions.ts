@@ -30,6 +30,9 @@ export async function completeSale(
     p_amount_tendered_centavos: d.amountTenderedCentavos,
     ...(d.customerId ? { p_customer: d.customerId } : {}),
     ...(d.redeemPoints ? { p_redeem_points: d.redeemPoints } : {}),
+    p_discount_type: d.discountType,
+    ...(d.beneficiaryIdNo ? { p_beneficiary_id_no: d.beneficiaryIdNo } : {}),
+    ...(d.beneficiaryName ? { p_beneficiary_name: d.beneficiaryName } : {}),
   });
   if (error) return { error: error.message };
 
