@@ -42,6 +42,19 @@ function readPublicEnv() {
   });
 
   if (!parsed.success) {
+    // During the Next.js build phase Vercel may not inject NEXT_PUBLIC_* vars
+    // (e.g. preview deployments whose env vars are only set for production).
+    // Return safe build-time defaults so static page-data collection doesn't
+    // abort — the missing vars will cause a proper runtime error if the user
+    // actually loads a page that tries to connect to Supabase.
+    if (process.env.NEXT_PHASE === "phase-production-build") {
+      return {
+        NEXT_PUBLIC_SUPABASE_URL: "https://placeholder.supabase.co",
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "placeholder",
+        NEXT_PUBLIC_BILLING_ENABLED: false,
+        NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME ?? "Reseta",
+      } as ReturnType<typeof publicSchema.parse>;
+    }
     throw new Error(
       `Invalid public environment variables:\n${parsed.error.issues
         .map((i) => `  - ${i.path.join(".")}: ${i.message}`)
