@@ -1140,12 +1140,15 @@ export type Database = {
       sales: {
         Row: {
           amount_tendered_centavos: number
+          beneficiary_id_no: string | null
+          beneficiary_name: string | null
           branch_id: string
           cashier_id: string | null
           change_centavos: number
           created_at: string
           customer_id: string | null
           discount_centavos: number
+          discount_type: string
           id: string
           organization_id: string
           payment_method: Database["public"]["Enums"]["payment_method"]
@@ -1155,17 +1158,21 @@ export type Database = {
           status: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos: number
           total_centavos: number
+          vat_exempt_centavos: number
           voided_at: string | null
           voided_by: string | null
         }
         Insert: {
           amount_tendered_centavos?: number
+          beneficiary_id_no?: string | null
+          beneficiary_name?: string | null
           branch_id: string
           cashier_id?: string | null
           change_centavos?: number
           created_at?: string
           customer_id?: string | null
           discount_centavos?: number
+          discount_type?: string
           id?: string
           organization_id: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -1175,17 +1182,21 @@ export type Database = {
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
           total_centavos?: number
+          vat_exempt_centavos?: number
           voided_at?: string | null
           voided_by?: string | null
         }
         Update: {
           amount_tendered_centavos?: number
+          beneficiary_id_no?: string | null
+          beneficiary_name?: string | null
           branch_id?: string
           cashier_id?: string | null
           change_centavos?: number
           created_at?: string
           customer_id?: string | null
           discount_centavos?: number
+          discount_type?: string
           id?: string
           organization_id?: string
           payment_method?: Database["public"]["Enums"]["payment_method"]
@@ -1195,6 +1206,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
           total_centavos?: number
+          vat_exempt_centavos?: number
           voided_at?: string | null
           voided_by?: string | null
         }
@@ -1460,6 +1472,9 @@ export type Database = {
           p_items: Json
           p_payment_method?: Database["public"]["Enums"]["payment_method"]
           p_redeem_points?: number
+          p_discount_type?: string
+          p_beneficiary_id_no?: string
+          p_beneficiary_name?: string
         }
         Returns: string
       }
