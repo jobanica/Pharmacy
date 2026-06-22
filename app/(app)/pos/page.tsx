@@ -13,6 +13,7 @@ import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { formatCentavos } from "@/lib/money";
 import { formatManila, manilaBusinessDay, manilaDayRange } from "@/lib/date";
+import { readLoyalty } from "@/lib/loyalty/settings";
 
 export default async function PosPage() {
   const ctx = await requireAppContext();
@@ -67,7 +68,12 @@ export default async function PosPage() {
         description={`Selling from ${branchName}. Today: ${todaysCount} sale(s), ${formatCentavos(todaysTotal)}.`}
       />
 
-      <PosTerminal products={sellable} branchName={branchName} customers={customers ?? []} />
+      <PosTerminal
+        products={sellable}
+        branchName={branchName}
+        customers={customers ?? []}
+        pesoPerPoint={readLoyalty(ctx.organization.settings).pesoPerPoint}
+      />
 
       <Card>
         <CardHeader>

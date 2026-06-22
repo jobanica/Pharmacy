@@ -31,10 +31,12 @@ export function PosTerminal({
   products,
   branchName,
   customers,
+  pesoPerPoint,
 }: {
   products: SellableProduct[];
   branchName: string;
   customers: Customer[];
+  pesoPerPoint: number;
 }) {
   const router = useRouter();
   const [search, setSearch] = React.useState("");
@@ -288,7 +290,7 @@ export function PosTerminal({
             {customer ? (
               <Row
                 label="Points to earn"
-                value={`+${Math.floor(total / 2000)}`}
+                value={`+${Math.floor(total / (pesoPerPoint * 100))}`}
                 className="text-xs text-amber-300"
               />
             ) : null}
