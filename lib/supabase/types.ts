@@ -511,6 +511,147 @@ export type Database = {
           },
         ]
       }
+      order_items: {
+        Row: {
+          id: string
+          line_total_centavos: number
+          order_id: string
+          organization_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          unit_price_centavos: number
+        }
+        Insert: {
+          id?: string
+          line_total_centavos: number
+          order_id: string
+          organization_id: string
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          unit_price_centavos: number
+        }
+        Update: {
+          id?: string
+          line_total_centavos?: number
+          order_id?: string
+          organization_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          unit_price_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["product_id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          branch_id: string
+          created_at: string
+          customer_name: string
+          customer_phone: string
+          delivery_address: string | null
+          delivery_lat: number | null
+          delivery_lng: number | null
+          fulfillment: Database["public"]["Enums"]["fulfillment_type"]
+          id: string
+          notes: string | null
+          order_number: string
+          organization_id: string
+          payment: Database["public"]["Enums"]["order_payment"]
+          status: Database["public"]["Enums"]["order_status"]
+          subtotal_centavos: number
+          total_centavos: number
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          customer_name: string
+          customer_phone: string
+          delivery_address?: string | null
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          fulfillment: Database["public"]["Enums"]["fulfillment_type"]
+          id?: string
+          notes?: string | null
+          order_number: string
+          organization_id: string
+          payment?: Database["public"]["Enums"]["order_payment"]
+          status?: Database["public"]["Enums"]["order_status"]
+          subtotal_centavos?: number
+          total_centavos?: number
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string
+          delivery_address?: string | null
+          delivery_lat?: number | null
+          delivery_lng?: number | null
+          fulfillment?: Database["public"]["Enums"]["fulfillment_type"]
+          id?: string
+          notes?: string | null
+          order_number?: string
+          organization_id?: string
+          payment?: Database["public"]["Enums"]["order_payment"]
+          status?: Database["public"]["Enums"]["order_status"]
+          subtotal_centavos?: number
+          total_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "v_low_stock"
+            referencedColumns: ["branch_id"]
+          },
+          {
+            foreignKeyName: "orders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string
@@ -1199,12 +1340,28 @@ export type Database = {
           role: Database["public"]["Enums"]["user_role"]
         }[]
       }
+      place_order: {
+        Args: {
+          p_address?: string
+          p_branch: string
+          p_fulfillment: string
+          p_items: Json
+          p_lat?: number
+          p_lng?: number
+          p_name: string
+          p_notes?: string
+          p_org: string
+          p_payment: string
+          p_phone: string
+        }
+        Returns: string
+      }
       receive_po_item: {
         Args: {
-          p_item: string
-          p_quantity: number
           p_batch_number?: string
           p_expiry?: string
+          p_item: string
+          p_quantity: number
         }
         Returns: undefined
       }
@@ -1234,6 +1391,7 @@ export type Database = {
     }
     Enums: {
       attendance_kind: "clock_in" | "clock_out"
+      fulfillment_type: "pickup" | "delivery"
       loyalty_kind: "earn" | "redeem" | "adjust"
       membership_status: "active" | "suspended"
       movement_type:
@@ -1243,6 +1401,15 @@ export type Database = {
         | "void"
         | "transfer"
         | "expiry_writeoff"
+      order_payment: "on_fulfillment" | "online"
+      order_status:
+        | "pending"
+        | "accepted"
+        | "preparing"
+        | "ready"
+        | "out_for_delivery"
+        | "completed"
+        | "cancelled"
       payment_method: "cash"
       po_status: "draft" | "sent" | "received" | "cancelled"
       sale_status: "completed" | "voided"
@@ -1375,6 +1542,7 @@ export const Constants = {
   public: {
     Enums: {
       attendance_kind: ["clock_in", "clock_out"],
+      fulfillment_type: ["pickup", "delivery"],
       loyalty_kind: ["earn", "redeem", "adjust"],
       membership_status: ["active", "suspended"],
       movement_type: [
@@ -1384,6 +1552,16 @@ export const Constants = {
         "void",
         "transfer",
         "expiry_writeoff",
+      ],
+      order_payment: ["on_fulfillment", "online"],
+      order_status: [
+        "pending",
+        "accepted",
+        "preparing",
+        "ready",
+        "out_for_delivery",
+        "completed",
+        "cancelled",
       ],
       payment_method: ["cash"],
       po_status: ["draft", "sent", "received", "cancelled"],
@@ -1402,3 +1580,6 @@ export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
 export type PoStatus = Database["public"]["Enums"]["po_status"];
 export type AttendanceKind = Database["public"]["Enums"]["attendance_kind"];
 export type LoyaltyKind = Database["public"]["Enums"]["loyalty_kind"];
+export type OrderStatus = Database["public"]["Enums"]["order_status"];
+export type FulfillmentType = Database["public"]["Enums"]["fulfillment_type"];
+export type OrderPayment = Database["public"]["Enums"]["order_payment"];
