@@ -11,6 +11,7 @@ import { can } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import { formatManila } from "@/lib/date";
 import { readBrand, PAPER_WIDTHS } from "@/lib/branding";
+import { readTax, vatBreakdown } from "@/lib/tax/settings";
 
 export default async function ReceiptPage({
   params,
@@ -69,6 +70,8 @@ export default async function ReceiptPage({
   const voided = sale.status === "voided";
   const canVoid = can(ctx.role, "void_sale") && !voided;
   const brand = readBrand(ctx.organization.settings);
+  const tax = readTax(ctx.organization.settings);
+  const vat = vatBreakdown(sale.total_centavos, tax.vatRatePct);
 
   return (
     <div className="mx-auto max-w-md">
@@ -99,6 +102,10 @@ export default async function ReceiptPage({
             <div className="mt-1 whitespace-pre-line text-xs">{brand.receipt.header}</div>
           ) : null}
           <div className="mt-1 text-xs">OFFICIAL RECEIPT</div>
+          {tax.tin ? <div className="text-xs">TIN: {tax.tin}</div> : null}
+          {tax.businessAddress ? (
+            <div className="whitespace-pre-line text-xs">{tax.businessAddress}</div>
+          ) : null}
         </div>
 
         {voided ? (
@@ -159,6 +166,19 @@ export default async function ReceiptPage({
             <Row label="Balance" value={`${customer.points_balance} pts`} />
           </div>
         ) : null}
+
+        <div className="mt-2 border-t border-dashed pt-2 text-xs">
+          <Row label={`VATable Sales`} value={formatCentavos(vat.vatableCentavos)} />
+          <Row label={`VAT Amount (${tax.vatRatePct}%)`} value={formatCentavos(vat.vatCentavos)} />
+          <Row label="VAT-Exempt Sales" value={formatCentavos(0)} />
+          <Row label="Zero-Rated Sales" value={formatCentavos(0)} />
+        </div>
+
+        <div className="mt-2 border-t border-dashed pt-2 text-xs text-center">
+          {tax.accreditationNo ? <div>Accreditation No.: {tax.accreditationNo}</div> : null}
+          {tax.permitNo ? <div>Permit No.: {tax.permitNo}</div> : null}
+          {tax.atpNo ? <div>ATP No.: {tax.atpNo}</div> : null}
+        </div>
 
         <div className="mt-3 whitespace-pre-line border-t border-dashed pt-2 text-center text-xs">
           {brand.receipt.footer ?? "Thank you for shopping!"}

@@ -24,8 +24,10 @@ import { CopyInviteLink } from "@/components/settings/copy-invite-link";
 import { BillingSection } from "@/components/settings/billing-section";
 import { BrandingSettings } from "@/components/settings/branding-settings";
 import { LoyaltySettings } from "@/components/settings/loyalty-settings";
+import { TaxSettingsCard } from "@/components/settings/tax-settings";
 import { readBrand } from "@/lib/branding";
 import { readLoyalty } from "@/lib/loyalty/settings";
+import { readTax } from "@/lib/tax/settings";
 import { publicEnv } from "@/lib/env";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -58,6 +60,7 @@ export default async function SettingsPage() {
   const subscription = isOwner ? await getSubscription() : null;
   const brand = readBrand(ctx.organization.settings);
   const loyalty = readLoyalty(ctx.organization.settings);
+  const tax = readTax(ctx.organization.settings);
   const canManageLoyalty = ctx.role === "owner" || ctx.role === "manager";
 
   const hdrs = await headers();
@@ -183,6 +186,10 @@ export default async function SettingsPage() {
             ) : null}
           </CardContent>
         </Card>
+      ) : null}
+
+      {isOwner ? (
+        <TaxSettingsCard tax={tax} />
       ) : null}
 
       {isOwner ? (

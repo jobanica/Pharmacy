@@ -720,6 +720,106 @@ export type Database = {
         }
         Relationships: []
       }
+      or_sequences: {
+        Row: { organization_id: string; last_number: number }
+        Insert: { organization_id: string; last_number?: number }
+        Update: { organization_id?: string; last_number?: number }
+        Relationships: []
+      }
+      register_readings: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string
+          type: string
+          z_counter: number | null
+          cashier_id: string | null
+          opened_at: string
+          closed_at: string
+          opening_cash_centavos: number
+          sales_count: number
+          gross_centavos: number
+          discount_centavos: number
+          points_discount_centavos: number
+          net_centavos: number
+          vatable_centavos: number
+          vat_centavos: number
+          vat_exempt_centavos: number
+          zero_rated_centavos: number
+          cash_centavos: number
+          card_centavos: number
+          gcash_centavos: number
+          maya_centavos: number
+          other_centavos: number
+          raw_snapshot: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id: string
+          type: string
+          z_counter?: number | null
+          cashier_id?: string | null
+          opened_at: string
+          closed_at?: string
+          opening_cash_centavos?: number
+          sales_count?: number
+          gross_centavos?: number
+          discount_centavos?: number
+          points_discount_centavos?: number
+          net_centavos?: number
+          vatable_centavos?: number
+          vat_centavos?: number
+          vat_exempt_centavos?: number
+          zero_rated_centavos?: number
+          cash_centavos?: number
+          card_centavos?: number
+          gcash_centavos?: number
+          maya_centavos?: number
+          other_centavos?: number
+          raw_snapshot?: Json
+          created_at?: string
+        }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      sale_payments: {
+        Row: {
+          id: string
+          organization_id: string
+          sale_id: string
+          method: string
+          amount_centavos: number
+          reference: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          sale_id: string
+          method: string
+          amount_centavos: number
+          reference?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          sale_id?: string
+          method?: string
+          amount_centavos?: number
+          reference?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      z_counters: {
+        Row: { organization_id: string; last_z: number }
+        Insert: { organization_id: string; last_z?: number }
+        Update: { organization_id?: string; last_z?: number }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
           created_at: string
@@ -1439,6 +1539,15 @@ export type Database = {
       }
       shares_org_with: { Args: { target: string }; Returns: boolean }
       slugify: { Args: { txt: string }; Returns: string }
+      close_reading: {
+        Args: {
+          p_branch: string
+          p_type: string
+          p_opening_cash?: number
+          p_opened_at?: string | null
+        }
+        Returns: string
+      }
       void_sale: { Args: { p_sale: string }; Returns: undefined }
       write_off_batch: {
         Args: { p_batch: string; p_reason?: string }
