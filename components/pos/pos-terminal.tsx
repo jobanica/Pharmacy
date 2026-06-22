@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Search, Plus, Minus, Trash2, ShoppingCart, Loader2 } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { completeSale } from "@/lib/pos/actions";
 import { CustomerPicker, type Customer } from "@/components/pos/customer-picker";
 import { formatCentavos, pesosToCentavos, centavosToPesos } from "@/lib/money";
-import type { DiscountType } from "@/lib/validation/pos";
+import type { DiscountType, PaymentMethodValue } from "@/lib/validation/pos";
+import { PAYMENT_METHODS } from "@/lib/validation/pos";
 import { RxDialog } from "@/components/pos/rx-dialog";
 
 export type SellableProduct = {
@@ -29,6 +30,15 @@ export type SellableProduct = {
 };
 
 type CartLine = { product: SellableProduct; qty: number };
+type TenderRow = { method: PaymentMethodValue; amount: string };
+
+const METHOD_LABELS: Record<PaymentMethodValue, string> = {
+  cash: "Cash",
+  card: "Card",
+  gcash: "GCash",
+  maya: "Maya",
+  other: "Other",
+};
 
 export function PosTerminal({
   products,
@@ -53,7 +63,7 @@ export function PosTerminal({
   const [discountType, setDiscountType] = React.useState<DiscountType>("none");
   const [beneficiaryIdNo, setBeneficiaryIdNo] = React.useState("");
   const [beneficiaryName, setBeneficiaryName] = React.useState("");
-  const [tendered, setTendered] = React.useState("");
+  const [tenders, setTenders] = React.useState<TenderRow[]>([{ method: "cash", amount: "" }]);
   const [customer, setCustomer] = React.useState<Customer | null>(null);
   const [redeemPoints, setRedeemPoints] = React.useState(0);
   const [rxDialogOpen, setRxDialogOpen] = React.useState(false);
@@ -153,7 +163,10 @@ export function PosTerminal({
   const effectiveRedeem = Math.min(redeemPoints, Math.max(maxRedeemable, 0));
   const redeemCentavos = effectiveRedeem * 100;
   const total = Math.max(subtotal - discountCentavos - redeemCentavos, 0);
-  const tenderedCentavos = tendered ? pesosToCentavos(tendered) : 0;
+  const tenderedCentavos = tenders.reduce(
+    (s, t) => s + (t.amount ? pesosToCentavos(t.amount) : 0),
+    0,
+  );
   const change = tenderedCentavos - total;
   const hasRxItems = lines.some((l) => l.product.requires_prescription);
   const rxSatisfied = !hasRxItems || prescriptionId != null;
@@ -162,16 +175,20 @@ export function PosTerminal({
   function checkout() {
     if (!canComplete) return;
     startTransition(async () => {
+      const validTenders = tenders
+        .map((t) => ({ method: t.method, amountCentavos: t.amount ? pesosToCentavos(t.amount) : 0 }))
+        .filter((t) => t.amountCentavos > 0);
       const res = await completeSale({
         items: lines.map((l) => ({ productId: l.product.id, quantity: l.qty })),
         discountCentavos,
-        amountTenderedCentavos: tenderedCentavos,
+        amountTenderedCentavos: 0,
         customerId: customer?.id ?? null,
         redeemPoints: effectiveRedeem,
         discountType,
         beneficiaryIdNo: beneficiaryIdNo || null,
         beneficiaryName: beneficiaryName || null,
         prescriptionId,
+        tenders: validTenders,
       });
       if ("error" in res) {
         toast.error(res.error);
@@ -381,17 +398,56 @@ export function PosTerminal({
                 className="text-xs text-amber-300"
               />
             ) : null}
-            <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="tendered">Cash tendered (₱)</Label>
-              <Input
-                id="tendered"
-                type="number"
-                min="0"
-                step="0.01"
-                value={tendered}
-                onChange={(e) => setTendered(e.target.value)}
-                className="h-8 w-28 text-right"
-              />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Tender</Label>
+              {tenders.map((t, i) => (
+                <div key={i} className="flex items-center gap-1">
+                  <select
+                    className="h-8 rounded-md border bg-background px-2 text-sm"
+                    value={t.method}
+                    onChange={(e) => {
+                      const next = [...tenders];
+                      next[i] = { ...next[i], method: e.target.value as PaymentMethodValue };
+                      setTenders(next);
+                    }}
+                  >
+                    {PAYMENT_METHODS.map((m) => (
+                      <option key={m} value={m}>{METHOD_LABELS[m]}</option>
+                    ))}
+                  </select>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={t.amount}
+                    onChange={(e) => {
+                      const next = [...tenders];
+                      next[i] = { ...next[i], amount: e.target.value };
+                      setTenders(next);
+                    }}
+                    className="h-8 flex-1 text-right"
+                  />
+                  {tenders.length > 1 ? (
+                    <button
+                      type="button"
+                      className="rounded p-1 hover:bg-muted"
+                      onClick={() => setTenders(tenders.filter((_, j) => j !== i))}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {tenders.length < 5 ? (
+                <button
+                  type="button"
+                  className="text-xs text-primary underline"
+                  onClick={() => setTenders([...tenders, { method: "cash", amount: "" }])}
+                >
+                  + Add payment method
+                </button>
+              ) : null}
             </div>
             <Row
               label="Change"
@@ -422,7 +478,7 @@ export function PosTerminal({
               onClick={() => {
                 setCart(new Map());
                 setDiscount("");
-                setTendered("");
+                setTenders([{ method: "cash", amount: "" }]);
                 setCustomer(null);
                 setRedeemPoints(0);
                 setDiscountType("none");
@@ -455,7 +511,7 @@ export function PosTerminal({
           <button
             type="button"
             className="text-xs text-muted-foreground underline"
-            onClick={() => setTendered(centavosToPesos(total).toFixed(2))}
+            onClick={() => setTenders([{ method: "cash", amount: centavosToPesos(total).toFixed(2) }])}
           >
             Exact cash
           </button>
