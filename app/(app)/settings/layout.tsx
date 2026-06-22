@@ -17,6 +17,7 @@ export default async function SettingsLayout({
     { href: "/settings", label: "Organization" },
     { href: "/settings/members", label: "Members" },
     ...(canManageMembers ? [{ href: "/settings/invite", label: "Invite teammate" }] : []),
+    ...(isOwner ? [{ href: "/settings/branches", label: "Branches" }] : []),
     ...(isOwner ? [{ href: "/settings/tax", label: "Tax & receipts" }] : []),
     ...(isOwner ? [{ href: "/settings/branding", label: "Branding & printer" }] : []),
     ...(canManageLoyalty ? [{ href: "/settings/loyalty", label: "Loyalty" }] : []),
