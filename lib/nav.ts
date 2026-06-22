@@ -16,6 +16,7 @@ import {
   FileText,
   BookOpen,
   Pill,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Point of Sale", href: "/pos", icon: ShoppingCart, requires: "create_sale" },
+  { label: "Cashier Shift", href: "/pos/shift", icon: Timer, requires: "create_sale" },
   { label: "Register Reading", href: "/pos/reading", icon: FileText, requires: "manage_members" },
   { label: "SC/PWD Logbook", href: "/pos/logbook", icon: BookOpen, requires: "manage_members" },
   { label: "Online Orders", href: "/orders", icon: ShoppingBag, requires: "create_sale" },

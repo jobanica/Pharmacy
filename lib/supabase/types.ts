@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      cashier_shifts: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string
+          cashier_id: string | null
+          status: "open" | "closed"
+          opening_cash_centavos: number
+          closing_cash_centavos: number | null
+          opened_at: string
+          closed_at: string | null
+          notes: string | null
+          sales_count: number | null
+          gross_centavos: number | null
+          discount_centavos: number | null
+          net_centavos: number | null
+          cash_collected_centavos: number | null
+          expected_cash_centavos: number | null
+          over_short_centavos: number | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id: string
+          cashier_id?: string | null
+          status?: "open" | "closed"
+          opening_cash_centavos?: number
+          closing_cash_centavos?: number | null
+          opened_at?: string
+          closed_at?: string | null
+          notes?: string | null
+          sales_count?: number | null
+          gross_centavos?: number | null
+          discount_centavos?: number | null
+          net_centavos?: number | null
+          cash_collected_centavos?: number | null
+          expected_cash_centavos?: number | null
+          over_short_centavos?: number | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string
+          cashier_id?: string | null
+          status?: "open" | "closed"
+          opening_cash_centavos?: number
+          closing_cash_centavos?: number | null
+          opened_at?: string
+          closed_at?: string | null
+          notes?: string | null
+          sales_count?: number | null
+          gross_centavos?: number | null
+          discount_centavos?: number | null
+          net_centavos?: number | null
+          cash_collected_centavos?: number | null
+          expected_cash_centavos?: number | null
+          over_short_centavos?: number | null
+        }
+        Relationships: []
+      }
       attendance: {
         Row: {
           branch_id: string
@@ -1205,6 +1265,7 @@ export type Database = {
           total_centavos: number
           is_split_tender: boolean
           prescription_id: string | null
+          shift_id: string | null
           vat_exempt_centavos: number
           voided_at: string | null
           voided_by: string | null
@@ -1231,6 +1292,7 @@ export type Database = {
           total_centavos?: number
           is_split_tender?: boolean
           prescription_id?: string | null
+          shift_id?: string | null
           vat_exempt_centavos?: number
           voided_at?: string | null
           voided_by?: string | null
@@ -1256,6 +1318,7 @@ export type Database = {
           subtotal_centavos?: number
           is_split_tender?: boolean
           prescription_id?: string | null
+          shift_id?: string | null
           total_centavos?: number
           vat_exempt_centavos?: number
           voided_at?: string | null
@@ -1508,6 +1571,14 @@ export type Database = {
       adjust_batch: {
         Args: { p_batch: string; p_new_quantity: number; p_reason?: string }
         Returns: undefined
+      }
+      open_shift: {
+        Args: { p_branch: string; p_opening_cash?: number }
+        Returns: string
+      }
+      close_shift: {
+        Args: { p_shift: string; p_closing_cash?: number; p_notes?: string }
+        Returns: Json
       }
       auth_org_id: { Args: never; Returns: string }
       auth_role: {
@@ -1799,6 +1870,7 @@ export const Constants = {
       payment_method: ["cash", "card", "gcash", "maya", "other"],
       po_status: ["draft", "sent", "received", "cancelled"],
       sale_status: ["completed", "voided"],
+      shift_status: ["open", "closed"],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
     },
   },
