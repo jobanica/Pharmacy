@@ -29,7 +29,7 @@ export default async function PosPage() {
     await Promise.all([
       supabase
         .from("products")
-        .select("id, name, generic_name, sku, barcode, unit, default_price_centavos")
+        .select("id, name, generic_name, sku, barcode, unit, default_price_centavos, requires_prescription")
         .eq("is_active", true)
         .order("name"),
       supabase
@@ -61,7 +61,8 @@ export default async function PosPage() {
   // plan there are no batches, so every active product is sellable.
   const sellable: SellableProduct[] = (products ?? [])
     .map((p) => ({ ...p, on_hand: onHandById.get(p.id) ?? 0 }))
-    .filter((p) => !tracksInventory || p.on_hand > 0);
+    .filter((p) => !tracksInventory || p.on_hand > 0)
+    .map((p) => ({ ...p, requires_prescription: p.requires_prescription ?? false }));
 
   const todaysCount = todays?.length ?? 0;
   const todaysTotal = (todays ?? []).reduce((s, r) => s + r.total_centavos, 0);

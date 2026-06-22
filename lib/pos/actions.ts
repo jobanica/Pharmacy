@@ -33,6 +33,7 @@ export async function completeSale(
     p_discount_type: d.discountType,
     ...(d.beneficiaryIdNo ? { p_beneficiary_id_no: d.beneficiaryIdNo } : {}),
     ...(d.beneficiaryName ? { p_beneficiary_name: d.beneficiaryName } : {}),
+    ...(d.prescriptionId ? { p_prescription_id: d.prescriptionId } : {}),
   });
   if (error) return { error: error.message };
 
