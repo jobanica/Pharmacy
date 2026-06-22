@@ -33,13 +33,13 @@ export default async function AppLayout({
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   return (
-    <div className="dark app-shell grid min-h-screen grid-rows-[auto_1fr] text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
+    <div className="dark app-shell grid h-screen grid-rows-[auto_1fr] overflow-hidden text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
       <NewOrderWatcher orgId={ctx.organization.id} />
       {/* Sidebar */}
-      <aside className="hidden border-r border-white/10 bg-white/[0.04] backdrop-blur-xl md:flex md:flex-col">
+      <aside className="hidden border-r border-white/10 bg-white/[0.04] backdrop-blur-xl md:flex md:h-screen md:flex-col md:overflow-hidden">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 px-5 py-5"
+          className="flex shrink-0 items-center gap-2 px-5 py-5"
         >
           {brand.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -51,19 +51,24 @@ export default async function AppLayout({
             {brand.name}
           </span>
         </Link>
-        <div className="px-5 pb-2 text-xs uppercase tracking-wider text-muted-foreground">
+        <div className="shrink-0 px-5 pb-2 text-xs uppercase tracking-wider text-muted-foreground">
           {ctx.organization.name}
         </div>
-        <SidebarNav role={ctx.role} plan={ctx.organization.plan} />
-        <div className="mt-auto p-3">
+        {/* Only the nav scrolls; the upgrade card + footer stay pinned. */}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SidebarNav role={ctx.role} plan={ctx.organization.plan} />
+        </div>
+        <div className="shrink-0 p-3">
           <UpgradeCard />
         </div>
-        <ShellFooter isPlatformAdmin={isPlatformAdmin} />
+        <div className="shrink-0">
+          <ShellFooter isPlatformAdmin={isPlatformAdmin} />
+        </div>
       </aside>
 
       {/* Main column */}
-      <div className="flex min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-xl md:px-6">
+      <div className="flex min-w-0 flex-col overflow-hidden md:h-screen">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-xl md:px-6">
           <div className="flex items-center gap-3">
             <MobileNav
               role={ctx.role}
@@ -86,7 +91,7 @@ export default async function AppLayout({
             />
           </div>
         </header>
-        <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+        <main className="min-w-0 flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
     </div>
   );
