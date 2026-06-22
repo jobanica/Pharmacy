@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { DeliveryMap } from "@/components/store/delivery-map";
+import { OrderTracker } from "@/components/store/order-tracker";
 import { placeOrder } from "@/lib/orders/actions";
 import { formatCentavos } from "@/lib/money";
 
@@ -50,7 +51,7 @@ export function Storefront({
   const [geo, setGeo] = React.useState<{ lat: number | null; lng: number | null }>({ lat: null, lng: null });
   const [notes, setNotes] = React.useState("");
   const [pending, setPending] = React.useState(false);
-  const [placed, setPlaced] = React.useState<string | null>(null);
+  const [placed, setPlaced] = React.useState<{ number: string; id: string } | null>(null);
 
   const byId = React.useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const filtered = React.useMemo(() => {
@@ -97,7 +98,7 @@ export function Storefront({
         toast.error(res.error);
         return;
       }
-      setPlaced(res.orderNumber);
+      setPlaced({ number: res.orderNumber, id: res.orderId });
       setCart(new Map());
     });
   }
@@ -109,7 +110,7 @@ export function Storefront({
         <CheckCircle2 className="mx-auto size-14 text-emerald-500" />
         <h1 className="mt-4 text-2xl font-semibold">Order placed!</h1>
         <p className="mt-2 text-muted-foreground">
-          Your order <span className="font-semibold text-foreground">{placed}</span> at{" "}
+          Your order <span className="font-semibold text-foreground">{placed.number}</span> at{" "}
           {storeName} has been received. We&apos;ll contact you at {phone} to confirm.
         </p>
         <div className="mt-4 rounded-lg border p-4 text-left text-sm">
@@ -122,6 +123,11 @@ export function Storefront({
             <span className="font-medium">{payment === "online" ? "Online (we'll send a link)" : "On pickup / delivery"}</span>
           </div>
         </div>
+
+        {placed.id ? (
+          <OrderTracker orderId={placed.id} fulfillment={fulfillment} />
+        ) : null}
+
         <Button className="mt-6" onClick={() => setPlaced(null)}>Place another order</Button>
       </div>
     );
