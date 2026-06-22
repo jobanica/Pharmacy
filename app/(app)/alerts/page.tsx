@@ -5,11 +5,24 @@ import { ExpiringTable, type ExpiringRow } from "@/components/alerts/expiring-ta
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
+import { canUseInventory } from "@/lib/billing/plans";
+import { PlanUpsell } from "@/components/billing/plan-upsell";
 
 export default async function AlertsPage() {
   const ctx = await requireAppContext();
   const supabase = await createClient();
   const canManage = can(ctx.role, "manage_stock");
+
+  if (!canUseInventory(ctx.organization.plan)) {
+    return (
+      <div className="grid gap-4">
+        <PlanUpsell
+          title="Expiry & Low-Stock Alerts"
+          description="Get notified about medicines that are expiring soon or running low on stock. Available on the Starter plan and above."
+        />
+      </div>
+    );
+  }
   const branchName =
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "branch";
 

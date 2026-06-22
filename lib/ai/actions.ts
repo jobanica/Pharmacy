@@ -8,6 +8,7 @@ import { requireAppContext, type AppContext } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { pesosToCentavos } from "@/lib/money";
 import { aiReceiptEnabled, extractReceipt } from "@/lib/ai/receipt";
+import { canUseAiScan, isAiScanUnlimited } from "@/lib/billing/plans";
 
 export type Result = { ok: true } | { error: string };
 
@@ -52,11 +53,43 @@ export type ScanResult =
 export async function scanReceipt(dataUrl: string): Promise<ScanResult> {
   const g = await guard();
   if ("error" in g) return { error: g.error };
+
+  const plan = g.ctx.organization.plan;
+  if (!canUseAiScan(plan)) {
+    return { error: "AI receipt scanning requires the Starter plan or higher. Upgrade in Settings → Billing." };
+  }
+
   if (!aiReceiptEnabled()) {
     return {
       error:
         "AI receipt scanning isn't configured. Add an ANTHROPIC_API_KEY to enable it.",
     };
+  }
+
+  // Starter plan: rate-limit to 1 scan per 7 days.
+  if (!isAiScanUnlimited(plan)) {
+    const supabaseCheck = await createClient();
+    const { data: orgRow } = await supabaseCheck
+      .from("organizations")
+      .select("settings")
+      .eq("id", g.ctx.organization.id)
+      .maybeSingle();
+    const settings = (orgRow?.settings ?? {}) as Record<string, unknown>;
+    const lastScan = settings.last_ai_scan_at as string | undefined;
+    if (lastScan) {
+      const daysSince = (Date.now() - new Date(lastScan).getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSince < 7) {
+        const nextAvailable = new Date(new Date(lastScan).getTime() + 7 * 24 * 60 * 60 * 1000);
+        return {
+          error: `Starter plan allows 1 AI scan per week. Next scan available: ${nextAvailable.toLocaleDateString("en-PH")}. Upgrade to Pro for unlimited scans.`,
+        };
+      }
+    }
+    // Record this scan timestamp.
+    await supabaseCheck
+      .from("organizations")
+      .update({ settings: { ...settings, last_ai_scan_at: new Date().toISOString() } })
+      .eq("id", g.ctx.organization.id);
   }
 
   const outcome = await extractReceipt(dataUrl);

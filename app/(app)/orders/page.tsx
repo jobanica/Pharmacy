@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { PageHeader } from "@/components/shell/page-header";
 import { OrdersList, type OrderRow } from "@/components/orders/orders-list";
 import { CopyInviteLink } from "@/components/settings/copy-invite-link";
+import { StoreQr } from "@/components/store/store-qr";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -48,6 +49,9 @@ export default async function OrdersPage() {
           ) : null
         }
       />
+      {storeUrl ? (
+        <StoreQr storeUrl={storeUrl} storeName={ctx.organization.name} />
+      ) : null}
       <OrdersList orders={rows} />
     </div>
   );

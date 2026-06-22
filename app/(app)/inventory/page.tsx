@@ -5,11 +5,24 @@ import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
 import { aiReceiptEnabled } from "@/lib/ai/receipt";
+import { canUseInventory } from "@/lib/billing/plans";
+import { PlanUpsell } from "@/components/billing/plan-upsell";
 
 export default async function InventoryPage() {
   const ctx = await requireAppContext();
   const supabase = await createClient();
   const canManage = can(ctx.role, "manage_catalog");
+
+  if (!canUseInventory(ctx.organization.plan)) {
+    return (
+      <div className="grid gap-4">
+        <PlanUpsell
+          title="Inventory Management"
+          description="Track stock levels, batch numbers, and expiry dates across your products. Available on the Starter plan and above."
+        />
+      </div>
+    );
+  }
   const branchName =
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
     "the active branch";
