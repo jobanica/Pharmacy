@@ -9,7 +9,9 @@ import { requireAppContext } from "@/lib/auth/session";
 import type { OrderStatus } from "@/lib/supabase/types";
 
 export type Result = { ok: true } | { error: string };
-export type PlaceOrderResult = { ok: true; orderNumber: string } | { error: string };
+export type PlaceOrderResult =
+  | { ok: true; orderNumber: string; orderId: string }
+  | { error: string };
 
 const placeOrderSchema = z.object({
   orgSlug: z.string().min(1),
@@ -60,7 +62,39 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     ...(d.notes?.trim() ? { p_notes: d.notes.trim() } : {}),
   });
   if (error) return { error: error.message };
-  return { ok: true, orderNumber: data as string };
+
+  const orderNumber = data as string;
+  // Resolve the new order's id so the customer can be handed a tracking view.
+  const { data: row } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("organization_id", org.id)
+    .eq("order_number", orderNumber)
+    .maybeSingle();
+
+  return { ok: true, orderNumber, orderId: row?.id ?? "" };
+}
+
+export type OrderStatusResult =
+  | { ok: true; orderNumber: string; status: OrderStatus }
+  | { error: string };
+
+/**
+ * Public order-status lookup for the storefront tracker. Anonymous customers
+ * poll this after placing an order; it returns only the status fields, scoped
+ * to a single order id, via the service client (orders have no public RLS).
+ */
+export async function getOrderStatus(orderId: string): Promise<OrderStatusResult> {
+  if (!orderId) return { error: "Missing order" };
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("order_number, status")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (error) return { error: error.message };
+  if (!data) return { error: "Order not found" };
+  return { ok: true, orderNumber: data.order_number, status: data.status as OrderStatus };
 }
 
 const ALLOWED: OrderStatus[] = [

@@ -11,6 +11,7 @@ import { ShellFooter } from "@/components/shell/shell-footer";
 import { getPlatformAdmin } from "@/lib/admin/auth";
 import { readBrand } from "@/lib/branding";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import { NewOrderWatcher } from "@/components/orders/new-order-watcher";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
@@ -33,6 +34,7 @@ export default async function AppLayout({
 
   return (
     <div className="dark app-shell grid min-h-screen grid-rows-[auto_1fr] text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
+      <NewOrderWatcher orgId={ctx.organization.id} />
       {/* Sidebar */}
       <aside className="hidden border-r border-white/10 bg-white/[0.04] backdrop-blur-xl md:flex md:flex-col">
         <Link
