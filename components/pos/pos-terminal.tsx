@@ -32,11 +32,14 @@ export function PosTerminal({
   branchName,
   customers,
   pesoPerPoint,
+  tracksInventory = true,
 }: {
   products: SellableProduct[];
   branchName: string;
   customers: Customer[];
   pesoPerPoint: number;
+  /** When false (Free plan), products sell without stock limits. */
+  tracksInventory?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = React.useState("");
@@ -66,7 +69,7 @@ export function PosTerminal({
       const next = new Map(prev);
       const line = next.get(p.id);
       const qty = (line?.qty ?? 0) + 1;
-      if (qty > p.on_hand) {
+      if (tracksInventory && qty > p.on_hand) {
         toast.error(`Only ${p.on_hand} ${p.unit}(s) of ${p.name} in stock`);
         return prev;
       }
@@ -82,7 +85,7 @@ export function PosTerminal({
       if (!line) return prev;
       if (qty <= 0) {
         next.delete(id);
-      } else if (qty > line.product.on_hand) {
+      } else if (tracksInventory && qty > line.product.on_hand) {
         toast.error(`Only ${line.product.on_hand} in stock`);
         return prev;
       } else {
@@ -165,7 +168,9 @@ export function PosTerminal({
           <div className="grid max-h-[60vh] gap-1 overflow-y-auto sm:grid-cols-2">
             {results.length === 0 ? (
               <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
-                No matching products with stock.
+                {tracksInventory
+                  ? "No matching products with stock."
+                  : "No matching products. Add products in the catalog."}
               </p>
             ) : (
               results.map((p) => (
@@ -179,7 +184,8 @@ export function PosTerminal({
                       {p.name}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {p.generic_name ?? p.sku ?? ""} · {p.on_hand} {p.unit}
+                      {p.generic_name ?? p.sku ?? ""}
+                      {tracksInventory ? ` · ${p.on_hand} ${p.unit}` : ""}
                     </span>
                   </span>
                   <span className="shrink-0 text-sm font-medium">

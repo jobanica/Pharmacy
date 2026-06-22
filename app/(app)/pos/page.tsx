@@ -14,10 +14,12 @@ import { createClient } from "@/lib/supabase/server";
 import { formatCentavos } from "@/lib/money";
 import { formatManila, manilaBusinessDay, manilaDayRange } from "@/lib/date";
 import { readLoyalty } from "@/lib/loyalty/settings";
+import { canUseInventory } from "@/lib/billing/plans";
 
 export default async function PosPage() {
   const ctx = await requireAppContext();
   const supabase = await createClient();
+  const tracksInventory = canUseInventory(ctx.organization.plan);
   const branchName =
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "branch";
   const { startUtc } = manilaDayRange(manilaBusinessDay());
@@ -54,9 +56,11 @@ export default async function PosPage() {
   const onHandById = new Map(
     (onHand ?? []).map((r) => [r.product_id, r.on_hand ?? 0]),
   );
+  // On inventory plans (Starter/Pro) we only sell what's in stock. On the Free
+  // plan there are no batches, so every active product is sellable.
   const sellable: SellableProduct[] = (products ?? [])
     .map((p) => ({ ...p, on_hand: onHandById.get(p.id) ?? 0 }))
-    .filter((p) => p.on_hand > 0);
+    .filter((p) => !tracksInventory || p.on_hand > 0);
 
   const todaysCount = todays?.length ?? 0;
   const todaysTotal = (todays ?? []).reduce((s, r) => s + r.total_centavos, 0);
@@ -73,6 +77,7 @@ export default async function PosPage() {
         branchName={branchName}
         customers={customers ?? []}
         pesoPerPoint={readLoyalty(ctx.organization.settings).pesoPerPoint}
+        tracksInventory={tracksInventory}
       />
 
       <Card>
