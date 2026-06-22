@@ -1565,6 +1565,72 @@ export type Database = {
           },
         ]
       }
+      sale_returns: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string
+          original_sale_id: string
+          return_number: string
+          cashier_id: string | null
+          reason: string | null
+          total_centavos: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id: string
+          original_sale_id: string
+          return_number: string
+          cashier_id?: string | null
+          reason?: string | null
+          total_centavos?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string
+          original_sale_id?: string
+          return_number?: string
+          cashier_id?: string | null
+          reason?: string | null
+          total_centavos?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
+      sale_return_items: {
+        Row: {
+          id: string
+          return_id: string
+          organization_id: string
+          product_id: string
+          quantity: number
+          unit_price_centavos: number
+          line_total_centavos: number
+        }
+        Insert: {
+          id?: string
+          return_id: string
+          organization_id: string
+          product_id: string
+          quantity: number
+          unit_price_centavos: number
+          line_total_centavos: number
+        }
+        Update: {
+          id?: string
+          return_id?: string
+          organization_id?: string
+          product_id?: string
+          quantity?: number
+          unit_price_centavos?: number
+          line_total_centavos?: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_invitation: { Args: { invite_token: string }; Returns: string }
@@ -1574,6 +1640,10 @@ export type Database = {
       }
       open_shift: {
         Args: { p_branch: string; p_opening_cash?: number }
+        Returns: string
+      }
+      process_return: {
+        Args: { p_sale: string; p_items: Json; p_reason?: string }
         Returns: string
       }
       close_shift: {

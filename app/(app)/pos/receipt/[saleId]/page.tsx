@@ -99,6 +99,14 @@ export default async function ReceiptPage({
         <div className="flex gap-2">
           <PrintButton />
           {canVoid ? <VoidSaleButton saleId={sale.id} /> : null}
+          {canVoid && !voided ? (
+            <Link
+              href={`/pos/receipt/${sale.id}/return`}
+              className="inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-muted"
+            >
+              Return
+            </Link>
+          ) : null}
         </div>
       </div>
 
