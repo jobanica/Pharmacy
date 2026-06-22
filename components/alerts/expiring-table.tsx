@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Trash2 } from "lucide-react";
+import { Trash2, Printer } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -33,9 +33,24 @@ export type ExpiringRow = {
 function bucket(days: number): { label: string; tone: string } {
   if (days < 0) return { label: "Expired", tone: "text-destructive" };
   if (days <= 30) return { label: "≤30 days", tone: "text-destructive" };
-  if (days <= 60) return { label: "≤60 days", tone: "text-amber-600 dark:text-amber-500" };
-  return { label: "≤90 days", tone: "text-muted-foreground" };
+  if (days <= 60) return { label: "31–60 days", tone: "text-amber-600 dark:text-amber-500" };
+  return { label: "61–90 days", tone: "text-muted-foreground" };
 }
+
+type FilterKey = "all" | "expired" | "d30" | "d60" | "d90";
+
+const FILTERS: {
+  key: FilterKey;
+  label: string;
+  tone: string;
+  test: (days: number) => boolean;
+}[] = [
+  { key: "all", label: "All", tone: "text-foreground", test: () => true },
+  { key: "expired", label: "Expired", tone: "text-destructive", test: (d) => d < 0 },
+  { key: "d30", label: "≤30 days", tone: "text-destructive", test: (d) => d >= 0 && d <= 30 },
+  { key: "d60", label: "31–60 days", tone: "text-amber-600 dark:text-amber-500", test: (d) => d > 30 && d <= 60 },
+  { key: "d90", label: "61–90 days", tone: "text-muted-foreground", test: (d) => d > 60 && d <= 90 },
+];
 
 function WriteOffButton({ batchId }: { batchId: string }) {
   const router = useRouter();
@@ -73,42 +88,69 @@ export function ExpiringTable({
   branchName: string;
   canManage: boolean;
 }) {
-  const counts = {
-    expired: rows.filter((r) => r.days_until < 0).length,
-    d30: rows.filter((r) => r.days_until >= 0 && r.days_until <= 30).length,
-    d60: rows.filter((r) => r.days_until > 30 && r.days_until <= 60).length,
-    d90: rows.filter((r) => r.days_until > 60 && r.days_until <= 90).length,
-  };
+  const [filter, setFilter] = React.useState<FilterKey>("all");
+  const active = FILTERS.find((f) => f.key === filter) ?? FILTERS[0];
+  const filtered = React.useMemo(
+    () => rows.filter((r) => active.test(r.days_until)),
+    [rows, active],
+  );
+
+  const printedAt = new Date().toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   return (
     <div className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Bucket label="Expired" value={counts.expired} tone="text-destructive" />
-        <Bucket label="≤30 days" value={counts.d30} tone="text-destructive" />
-        <Bucket label="≤60 days" value={counts.d60} tone="text-amber-600 dark:text-amber-500" />
-        <Bucket label="≤90 days" value={counts.d90} tone="text-foreground" />
+      {/* Clickable filter buckets — tap one, then print to separate that pile. */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 print:hidden">
+        {FILTERS.map((f) => (
+          <Bucket
+            key={f.key}
+            label={f.label}
+            value={rows.filter((r) => f.test(r.days_until)).length}
+            tone={f.tone}
+            active={f.key === filter}
+            onClick={() => setFilter(f.key)}
+          />
+        ))}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <p className="text-sm text-muted-foreground">
-          {rows.length} batch(es) expiring within 90 days.
+          Showing <span className="font-medium text-foreground">{active.label}</span> —{" "}
+          {filtered.length} batch(es).
         </p>
-        <CsvExportButton
-          rows={rows}
-          filename={`expiring-stock-${branchName}.csv`}
-          columns={[
-            { header: "Product", value: (r) => r.product_name },
-            { header: "Supplier", value: (r) => r.supplier_name ?? "" },
-            { header: "Batch", value: (r) => r.batch_number ?? "" },
-            { header: "Expiry", value: (r) => r.expiry_date },
-            { header: "Days until", value: (r) => r.days_until },
-            { header: "Quantity", value: (r) => r.quantity },
-            { header: "Unit", value: (r) => r.unit },
-          ]}
-        />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="size-4" />
+            Print
+          </Button>
+          <CsvExportButton
+            rows={filtered}
+            filename={`expiring-stock-${active.label}-${branchName}.csv`}
+            columns={[
+              { header: "Product", value: (r) => r.product_name },
+              { header: "Supplier", value: (r) => r.supplier_name ?? "" },
+              { header: "Batch", value: (r) => r.batch_number ?? "" },
+              { header: "Expiry", value: (r) => r.expiry_date },
+              { header: "Days until", value: (r) => r.days_until },
+              { header: "Quantity", value: (r) => r.quantity },
+              { header: "Unit", value: (r) => r.unit },
+            ]}
+          />
+        </div>
       </div>
 
-      <div className="rounded-lg border">
+      {/* print-area: the only thing that shows on the printout (see globals.css). */}
+      <div className="rounded-lg border print-area">
+        <div className="hidden p-4 print:block">
+          <h2 className="text-lg font-bold">Expiring stock — {active.label}</h2>
+          <p className="text-sm">
+            {branchName} · {filtered.length} batch(es) · Printed {printedAt}
+          </p>
+        </div>
         <Table>
           <TableHeader>
             <TableRow>
@@ -118,12 +160,12 @@ export function ExpiringTable({
               <TableHead>Expiry</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Qty</TableHead>
-              {canManage ? <TableHead /> : null}
+              {canManage ? <TableHead className="print:hidden" /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length > 0 ? (
-              rows.map((r) => {
+            {filtered.length > 0 ? (
+              filtered.map((r) => {
                 const b = bucket(r.days_until);
                 return (
                   <TableRow key={r.batch_id}>
@@ -141,7 +183,7 @@ export function ExpiringTable({
                       {r.quantity} {r.unit}
                     </TableCell>
                     {canManage ? (
-                      <TableCell className="text-right">
+                      <TableCell className="text-right print:hidden">
                         <WriteOffButton batchId={r.batch_id} />
                       </TableCell>
                     ) : null}
@@ -154,7 +196,7 @@ export function ExpiringTable({
                   colSpan={canManage ? 7 : 6}
                   className="h-20 text-center text-muted-foreground"
                 >
-                  No stock expiring within 90 days. 🎉
+                  No batches in “{active.label}”.
                 </TableCell>
               </TableRow>
             )}
@@ -165,13 +207,33 @@ export function ExpiringTable({
   );
 }
 
-function Bucket({ label, value, tone }: { label: string; value: number; tone: string }) {
+function Bucket({
+  label,
+  value,
+  tone,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  tone: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className={`text-2xl font-semibold ${tone}`}>{value}</div>
-        <div className="text-xs text-muted-foreground">{label}</div>
-      </CardContent>
-    </Card>
+    <button type="button" onClick={onClick} className="text-left">
+      <Card
+        className={
+          active
+            ? "border-primary ring-1 ring-primary"
+            : "transition-colors hover:border-primary/50"
+        }
+      >
+        <CardContent className="p-4">
+          <div className={`text-2xl font-semibold ${tone}`}>{value}</div>
+          <div className="text-xs text-muted-foreground">{label}</div>
+        </CardContent>
+      </Card>
+    </button>
   );
 }
