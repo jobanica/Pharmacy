@@ -35,11 +35,12 @@ export const PLANS: Plan[] = [
   {
     id: "starter",
     name: "Starter",
-    priceCentavos: 49900,
+    priceCentavos: 69900,
     interval: "month",
     description: "For a growing independent pharmacy.",
     features: [
       "Everything in Free",
+      "Online ordering website (storefront)",
       "Inventory management",
       "Expiry & low-stock alerts",
       "Purchase orders",
@@ -50,7 +51,7 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "Pro",
-    priceCentavos: 149900,
+    priceCentavos: 179900,
     interval: "month",
     description: "For multi-branch operations.",
     features: [

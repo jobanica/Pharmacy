@@ -7,6 +7,7 @@ import { BranchSwitcher } from "@/components/shell/branch-switcher";
 import { UserMenu } from "@/components/shell/user-menu";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { UpgradeCard } from "@/components/shell/upgrade-card";
+import { ShellFooter } from "@/components/shell/shell-footer";
 import { readBrand } from "@/lib/branding";
 
 export default async function AppLayout({
@@ -42,6 +43,7 @@ export default async function AppLayout({
         <div className="mt-auto p-3">
           <UpgradeCard />
         </div>
+        <ShellFooter />
       </aside>
 
       {/* Main column */}
