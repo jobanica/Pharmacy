@@ -34,6 +34,9 @@ export async function completeSale(
     ...(d.beneficiaryIdNo ? { p_beneficiary_id_no: d.beneficiaryIdNo } : {}),
     ...(d.beneficiaryName ? { p_beneficiary_name: d.beneficiaryName } : {}),
     ...(d.prescriptionId ? { p_prescription_id: d.prescriptionId } : {}),
+    ...(d.tenders && d.tenders.length > 0
+      ? { p_tenders: d.tenders.map((t) => ({ method: t.method, amount_centavos: t.amountCentavos, reference: t.reference ?? null })) }
+      : {}),
   });
   if (error) return { error: error.message };
 

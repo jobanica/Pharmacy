@@ -48,7 +48,7 @@ export default async function ReceiptPage({
         .maybeSingle()
     : { data: null };
 
-  const [{ data: items }, { data: branch }, { data: cashier }] = await Promise.all([
+  const [{ data: items }, { data: branch }, { data: cashier }, { data: payments }] = await Promise.all([
     supabase
       .from("sale_items")
       .select("product_id, quantity, unit_price_centavos, line_total_centavos, products(name, unit)")
@@ -57,6 +57,7 @@ export default async function ReceiptPage({
     sale.cashier_id
       ? supabase.from("profiles").select("full_name").eq("id", sale.cashier_id).maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase.from("sale_payments").select("method, amount_centavos").eq("sale_id", saleId).order("created_at"),
   ]);
 
   // FEFO may split a line across batches — aggregate back to one row per product.
@@ -176,9 +177,10 @@ export default async function ReceiptPage({
             <Row label={`Points (${sale.points_redeemed})`} value={`-${formatCentavos(sale.points_redeemed * 100)}`} />
           ) : null}
           <Row label="TOTAL" value={formatCentavos(sale.total_centavos)} bold />
-          <Row label="Cash" value={formatCentavos(sale.amount_tendered_centavos)} />
+          {(payments && payments.length > 0 ? payments : [{ method: sale.payment_method, amount_centavos: sale.amount_tendered_centavos }]).map((p, i) => (
+            <Row key={i} label={p.method.toUpperCase()} value={formatCentavos(p.amount_centavos)} />
+          ))}
           <Row label="Change" value={formatCentavos(sale.change_centavos)} />
-          <Row label="Payment" value={sale.payment_method.toUpperCase()} />
         </div>
 
         {customer ? (

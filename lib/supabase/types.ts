@@ -1203,6 +1203,7 @@ export type Database = {
           status: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos: number
           total_centavos: number
+          is_split_tender: boolean
           prescription_id: string | null
           vat_exempt_centavos: number
           voided_at: string | null
@@ -1228,6 +1229,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
           total_centavos?: number
+          is_split_tender?: boolean
           prescription_id?: string | null
           vat_exempt_centavos?: number
           voided_at?: string | null
@@ -1252,6 +1254,7 @@ export type Database = {
           receipt_number?: string
           status?: Database["public"]["Enums"]["sale_status"]
           subtotal_centavos?: number
+          is_split_tender?: boolean
           prescription_id?: string | null
           total_centavos?: number
           vat_exempt_centavos?: number
@@ -1524,6 +1527,7 @@ export type Database = {
           p_beneficiary_id_no?: string
           p_beneficiary_name?: string
           p_prescription_id?: string
+          p_tenders?: Json
         }
         Returns: string
       }
@@ -1792,7 +1796,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-      payment_method: ["cash"],
+      payment_method: ["cash", "card", "gcash", "maya", "other"],
       po_status: ["draft", "sent", "received", "cancelled"],
       sale_status: ["completed", "voided"],
       user_role: ["owner", "manager", "pharmacist", "cashier"],
