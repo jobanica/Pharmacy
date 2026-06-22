@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Sparkles } from "lucide-react";
+import { Pencil, Plus, Sparkles, ArrowUpDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -23,6 +23,7 @@ export type ProductWithCategory = ProductRow & {
   on_hand: number;
   next_batch_number: string | null;
   next_expiry: string | null;
+  batch_count: number;
 };
 
 function ExpiryCell({ date }: { date: string | null }) {
@@ -130,15 +131,37 @@ function buildColumns(
     {
       id: "batch",
       header: "Batch #",
-      cell: ({ row }) =>
-        row.original.next_batch_number ?? (
-          <span className="text-muted-foreground">—</span>
-        ),
+      cell: ({ row }) => {
+        const { next_batch_number, batch_count } = row.original;
+        if (!next_batch_number && batch_count === 0) {
+          return <span className="text-muted-foreground">—</span>;
+        }
+        return (
+          <div className="whitespace-nowrap">
+            {next_batch_number ?? <span className="text-muted-foreground">—</span>}
+            {batch_count > 1 ? (
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                +{batch_count - 1} more
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
-      accessorFn: (r) => r.next_expiry ?? "",
+      // No-expiry/no-stock products sort last when ascending.
+      accessorFn: (r) => r.next_expiry ?? "9999-12-31",
       id: "expiry",
-      header: "Expiry",
+      header: ({ column }) => (
+        <button
+          type="button"
+          className="-ml-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Expiry
+          <ArrowUpDown className="size-3.5" />
+        </button>
+      ),
       cell: ({ row }) => <ExpiryCell date={row.original.next_expiry} />,
     },
     {

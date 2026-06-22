@@ -42,10 +42,14 @@ export default async function InventoryPage() {
     (onHand ?? []).map((r) => [r.product_id, r.on_hand ?? 0]),
   );
 
-  // Nearest-expiry batch per product (first seen wins thanks to the ordering).
+  // Nearest-expiry batch per product (first seen wins thanks to the ordering)
+  // plus how many in-stock batches each product has.
   const nextBatchById = new Map<string, { batch_number: string | null; expiry_date: string | null }>();
+  const batchCountById = new Map<string, number>();
   for (const b of batches ?? []) {
-    if (b.product_id && !nextBatchById.has(b.product_id)) {
+    if (!b.product_id) continue;
+    batchCountById.set(b.product_id, (batchCountById.get(b.product_id) ?? 0) + 1);
+    if (!nextBatchById.has(b.product_id)) {
       nextBatchById.set(b.product_id, {
         batch_number: b.batch_number,
         expiry_date: b.expiry_date,
@@ -64,6 +68,7 @@ export default async function InventoryPage() {
       on_hand: onHandById.get(rest.id) ?? 0,
       next_batch_number: next?.batch_number ?? null,
       next_expiry: next?.expiry_date ?? null,
+      batch_count: batchCountById.get(rest.id) ?? 0,
     };
   });
 
