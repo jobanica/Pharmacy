@@ -17,6 +17,11 @@ const publicSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
   NEXT_PUBLIC_APP_NAME: z.string().default("Reseta"),
+  // The app's own primary hostname (e.g. "app.reseta.ph"). When set, any request
+  // arriving on a *different* host is treated as a tenant's custom storefront
+  // domain and rewritten to its store. Leave unset to disable custom-domain
+  // routing (safe default — nothing gets rewritten).
+  NEXT_PUBLIC_PRIMARY_HOST: z.string().optional(),
 });
 
 const serverSchema = z.object({
@@ -39,6 +44,7 @@ function readPublicEnv() {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_BILLING_ENABLED: process.env.NEXT_PUBLIC_BILLING_ENABLED,
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
+    NEXT_PUBLIC_PRIMARY_HOST: process.env.NEXT_PUBLIC_PRIMARY_HOST,
   });
 
   if (!parsed.success) {

@@ -98,3 +98,8 @@ export function isAiScanUnlimited(plan: string): boolean {
 export function canUseMultiBranch(plan: string): boolean {
   return isProPlan(plan);
 }
+
+/** Whether this plan can connect its storefront to a custom domain. */
+export function canUseCustomDomain(plan: string): boolean {
+  return isProPlan(plan);
+}

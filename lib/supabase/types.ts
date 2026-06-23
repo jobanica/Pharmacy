@@ -753,6 +753,7 @@ export type Database = {
       organizations: {
         Row: {
           created_at: string
+          custom_domain: string | null
           id: string
           name: string
           plan: string
@@ -762,6 +763,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_domain?: string | null
           id?: string
           name: string
           plan?: string
@@ -771,6 +773,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_domain?: string | null
           id?: string
           name?: string
           plan?: string
