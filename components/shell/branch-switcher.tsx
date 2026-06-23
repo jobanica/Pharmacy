@@ -42,9 +42,9 @@ export function BranchSwitcher({
     setActive(branchId);
     startTransition(async () => {
       await setActiveBranchAction(branchId);
-      // Explicitly re-fetch so every branch-scoped page (including the
-      // dashboard) reflects the new branch immediately.
-      router.refresh();
+      // Hard reload is more reliable than router.refresh() across browsers —
+      // avoids the RSC fetch occasionally failing mid-transition.
+      window.location.reload();
     });
   }
 

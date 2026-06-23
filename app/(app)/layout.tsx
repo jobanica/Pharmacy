@@ -11,9 +11,7 @@ import { UpgradeCard } from "@/components/shell/upgrade-card";
 import { ShellFooter } from "@/components/shell/shell-footer";
 import { getPlatformAdmin } from "@/lib/admin/auth";
 import { readBrand } from "@/lib/branding";
-import { NotificationBell } from "@/components/notifications/notification-bell";
 import { NewOrderWatcher } from "@/components/orders/new-order-watcher";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function AppLayout({
   children,
