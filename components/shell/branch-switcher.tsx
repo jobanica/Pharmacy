@@ -1,10 +1,7 @@
 "use client";
 
-import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Building2, Check, ChevronsUpDown } from "lucide-react";
-
-import { setActiveBranchAction } from "@/lib/auth/actions";
+import { usePathname } from "next/navigation";
 
 import {
   DropdownMenu,
@@ -18,10 +15,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { BranchSummary } from "@/lib/auth/session";
 
-/**
- * Branch switcher. Selecting a branch persists it via a server action (cookie)
- * and refreshes branch-scoped data. Single-branch users get a static label.
- */
 export function BranchSwitcher({
   branches,
   activeBranchId,
@@ -29,24 +22,8 @@ export function BranchSwitcher({
   branches: BranchSummary[];
   activeBranchId: string;
 }) {
-  const router = useRouter();
-  const [active, setActive] = React.useState(activeBranchId);
-  const [isPending, startTransition] = React.useTransition();
-  const current = branches.find((b) => b.id === active) ?? branches[0];
-
-  // Keep local state in sync if the active branch changes server-side.
-  React.useEffect(() => setActive(activeBranchId), [activeBranchId]);
-
-  function selectBranch(branchId: string) {
-    if (branchId === active) return;
-    setActive(branchId);
-    startTransition(async () => {
-      await setActiveBranchAction(branchId);
-      // Hard reload is more reliable than router.refresh() across browsers —
-      // avoids the RSC fetch occasionally failing mid-transition.
-      window.location.reload();
-    });
-  }
+  const pathname = usePathname();
+  const current = branches.find((b) => b.id === activeBranchId) ?? branches[0];
 
   if (branches.length <= 1) {
     return (
@@ -57,17 +34,18 @@ export function BranchSwitcher({
     );
   }
 
+  function switchTo(branchId: string) {
+    if (branchId === activeBranchId) return;
+    window.location.href = `/api/switch-branch?id=${encodeURIComponent(branchId)}&next=${encodeURIComponent(pathname)}`;
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <button
             type="button"
-            disabled={isPending}
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "w-[200px] justify-between",
-            )}
+            className={cn(buttonVariants({ variant: "outline" }), "w-[200px] justify-between")}
           />
         }
       >
@@ -83,11 +61,11 @@ export function BranchSwitcher({
         {branches.map((branch) => (
           <DropdownMenuItem
             key={branch.id}
-            onSelect={() => selectBranch(branch.id)}
+            onSelect={() => switchTo(branch.id)}
             className="justify-between"
           >
             {branch.name}
-            {branch.id === active ? <Check className="size-4" /> : null}
+            {branch.id === activeBranchId ? <Check className="size-4" /> : null}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
