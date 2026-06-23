@@ -87,6 +87,14 @@ export default async function AppLayout({
             role={ctx.role}
           />
         </header>
+        {ctx.user.email?.endsWith("@placeholder.reseta.ph") ? (
+          <div className="shrink-0 flex items-center justify-between gap-3 bg-amber-500/15 px-4 py-2 text-sm text-amber-300 md:px-6">
+            <span>Your account setup is not complete. Please set your email and password.</span>
+            <a href="/setup" className="shrink-0 font-medium underline underline-offset-2">
+              Complete setup →
+            </a>
+          </div>
+        ) : null}
         <main className="min-w-0 flex-1 overflow-auto p-4 md:p-6">{children}</main>
       </div>
     </div>

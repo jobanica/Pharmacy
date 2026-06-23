@@ -124,35 +124,28 @@ export async function setOrgStatus(input: z.input<typeof statusSchema>): Promise
 }
 
 const createAccountSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  fullName: z.string().min(1),
   orgName: z.string().min(1),
+  ownerName: z.string().min(1),
   plan: z.enum(["free", "starter", "pro"]).default("free"),
 });
 
-export type CreateAccountResult = { ok: true; orgId: string } | { error: string };
+export type CreateAccountResult =
+  | { ok: true; orgId: string; setupLink: string }
+  | { error: string };
 
+/**
+ * Create a pharmacy account using only a username/org name.
+ * The pharmacy owner uses the returned setup link to set their own email + password.
+ */
 export async function createAccount(
   input: z.input<typeof createAccountSchema>,
 ): Promise<CreateAccountResult> {
   await requirePlatformAdmin();
   const parsed = createAccountSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0].message };
-  const { email, password, fullName, orgName, plan } = parsed.data;
+  const { orgName, ownerName, plan } = parsed.data;
 
   const db = createServiceClient();
-
-  const { data: authData, error: authError } = await db.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { full_name: fullName },
-  });
-  if (authError) return { error: authError.message };
-  const userId = authData.user.id;
-
-  await db.from("profiles").upsert({ id: userId, full_name: fullName });
 
   const slug =
     orgName
@@ -162,6 +155,21 @@ export async function createAccount(
       .slice(0, 50) +
     "-" +
     Math.random().toString(36).slice(2, 6);
+
+  // Placeholder email — signals "setup not yet complete".
+  const placeholderEmail = `${slug}@placeholder.reseta.ph`;
+  const tempPassword = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2).toUpperCase() + "!1";
+
+  const { data: authData, error: authError } = await db.auth.admin.createUser({
+    email: placeholderEmail,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { full_name: ownerName, setup_pending: true },
+  });
+  if (authError) return { error: authError.message };
+  const userId = authData.user.id;
+
+  await db.from("profiles").upsert({ id: userId, full_name: ownerName });
 
   const { data: org, error: orgError } = await db
     .from("organizations")
@@ -183,6 +191,19 @@ export async function createAccount(
     is_active: true,
   });
 
+  // Generate a one-time magic link so the pharmacy can log in without knowing the temp password.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
+    type: "magiclink",
+    email: placeholderEmail,
+    options: { redirectTo: `${appUrl}/setup` },
+  });
+  if (linkError) return { error: `Account created but link failed: ${linkError.message}` };
+
   revalidatePath("/admin/subscriptions");
-  return { ok: true, orgId: org.id };
+  return {
+    ok: true,
+    orgId: org.id,
+    setupLink: (linkData as { properties?: { action_link?: string } }).properties?.action_link ?? appUrl,
+  };
 }
