@@ -11,7 +11,9 @@ import { ROLE_LABELS, ROLES } from "@/lib/auth/roles";
 
 const INVITABLE_ROLES = ROLES.filter((r) => r !== "owner");
 
-export function InviteForm() {
+type Branch = { id: string; name: string };
+
+export function InviteForm({ branches }: { branches: Branch[] }) {
   const [state, formAction] = useActionState<ActionState, FormData>(
     createInviteAction,
     null,
@@ -58,6 +60,24 @@ export function InviteForm() {
           ))}
         </select>
       </div>
+      {branches.length > 0 ? (
+        <div className="grid gap-2">
+          <Label htmlFor="invite-branch">Branch</Label>
+          <select
+            id="invite-branch"
+            name="branch_id"
+            defaultValue=""
+            className="h-9 rounded-md border bg-transparent px-3 text-sm shadow-xs"
+          >
+            <option value="">All branches</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       <div className="sm:w-32">
         <SubmitButton>Invite</SubmitButton>
       </div>

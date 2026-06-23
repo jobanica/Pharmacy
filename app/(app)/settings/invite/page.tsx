@@ -23,11 +23,17 @@ export default async function SettingsInvitePage() {
   if (!can(ctx.role, "manage_members")) redirect("/settings");
 
   const supabase = await createClient();
-  const { data: invites } = await supabase
-    .from("invitations")
-    .select("id, email, role, token, expires_at")
-    .is("accepted_at", null)
-    .order("created_at", { ascending: false });
+  const [{ data: invites }, { data: branches }] = await Promise.all([
+    supabase
+      .from("invitations")
+      .select("id, email, role, token, expires_at, branch_id")
+      .is("accepted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("branches")
+      .select("id, name")
+      .order("name", { ascending: true }),
+  ]);
 
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "";
@@ -43,7 +49,7 @@ export default async function SettingsInvitePage() {
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
-        <InviteForm />
+        <InviteForm branches={branches ?? []} />
 
         {invites && invites.length > 0 ? (
           <div className="grid gap-3">
@@ -56,7 +62,11 @@ export default async function SettingsInvitePage() {
                 <div className="text-sm">
                   <span className="font-medium">{inv.email}</span>
                   <span className="ml-2 text-muted-foreground">
-                    {ROLE_LABELS[inv.role as Role]} · expires{" "}
+                    {ROLE_LABELS[inv.role as Role]}
+                    {inv.branch_id
+                      ? ` · ${(branches ?? []).find((b) => b.id === inv.branch_id)?.name ?? "Branch"}`
+                      : ""}
+                    {" · expires "}
                     {formatManila(inv.expires_at, "MMM d, yyyy")}
                   </span>
                 </div>
