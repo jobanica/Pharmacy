@@ -215,7 +215,7 @@ export function PosTerminal({
               className="pl-8"
             />
           </div>
-          <div className="grid max-h-[60vh] gap-1 overflow-y-auto sm:grid-cols-2">
+          <div className="grid max-h-[34vh] gap-1 overflow-y-auto sm:grid-cols-2 lg:max-h-[60vh]">
             {results.length === 0 ? (
               <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
                 {tracksInventory

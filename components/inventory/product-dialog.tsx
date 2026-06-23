@@ -45,16 +45,19 @@ export type ProductRow = {
 };
 
 type CategoryOption = { id: string; name: string };
+type SupplierOption = { id: string; name: string };
 
 const UNITS = ["piece", "tablet", "capsule", "bottle", "box", "sachet", "tube", "vial", "ml"];
-const EMPTY_STOCK = { qty: "", batch: "", expiry: "", cost: "" };
+const EMPTY_STOCK = { qty: "", batch: "", expiry: "", cost: "", supplier: "" };
 
 export function ProductDialog({
   categories,
+  suppliers = [],
   product,
   trigger,
 }: {
   categories: CategoryOption[];
+  suppliers?: SupplierOption[];
   product?: ProductRow;
   trigger: React.ReactNode;
 }) {
@@ -121,7 +124,7 @@ export function ProductDialog({
           cost: Number(stock.cost) || 0,
           batchNumber: stock.batch || undefined,
           expiryDate: stock.expiry || undefined,
-          supplierId: "",
+          supplierId: stock.supplier || "",
         });
         if ("error" in stockRes) {
           toast.error(`Product saved, but stock failed: ${stockRes.error}`);
@@ -263,6 +266,20 @@ export function ProductDialog({
           {!isEdit ? (
             <div className="grid gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
               <p className="text-sm font-medium">Opening stock (optional)</p>
+              <Field label="Supplier">
+                <select
+                  value={stock.supplier}
+                  onChange={(e) => setStock((s) => ({ ...s, supplier: e.target.value }))}
+                  className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                >
+                  <option value="">— none —</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Quantity">
                   <Input

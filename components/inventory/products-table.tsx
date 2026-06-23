@@ -285,6 +285,7 @@ export function ProductsTable({
           {canManage ? (
             <ProductDialog
               categories={categories}
+              suppliers={suppliers}
               trigger={
                 <Button>
                   <Plus className="size-4" />
