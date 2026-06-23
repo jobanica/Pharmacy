@@ -14,7 +14,7 @@ export function UpgradeCard() {
         Unlock multi-branch reports and priority support.
       </p>
       <Link
-        href="/settings"
+        href="/settings/billing"
         className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-white/95 px-3 py-1.5 text-sm font-medium text-violet-700 transition hover:bg-white"
       >
         Upgrade now

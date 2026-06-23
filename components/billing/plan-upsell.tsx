@@ -24,7 +24,7 @@ export function PlanUpsell({
           <p className="max-w-sm text-sm text-muted-foreground">{description}</p>
         </div>
         <p className="text-sm font-medium text-primary">Requires the {requiredPlan} plan</p>
-        <Button render={<Link href="/settings?tab=billing" />}>Upgrade now</Button>
+        <Button render={<Link href="/settings/billing" />}>Upgrade now</Button>
       </CardContent>
     </Card>
   );
