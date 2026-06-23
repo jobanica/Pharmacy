@@ -30,6 +30,9 @@ export async function createInviteAction(
     return { error: parsed.error.issues[0]?.message ?? "Invalid invite" };
   }
 
+  const rawBranch = formData.get("branch_id");
+  const branchId = typeof rawBranch === "string" && rawBranch ? rawBranch : null;
+
   const supabase = await createClient();
   const token = `${crypto.randomUUID()}${crypto.randomUUID()}`.replace(/-/g, "");
   const expiresAt = new Date(
@@ -40,6 +43,7 @@ export async function createInviteAction(
     organization_id: ctx.organization.id,
     email: parsed.data.email.toLowerCase(),
     role: parsed.data.role as UserRole,
+    branch_id: branchId,
     token,
     expires_at: expiresAt,
     invited_by: ctx.user.id,
