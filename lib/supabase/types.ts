@@ -1611,6 +1611,7 @@ export type Database = {
           organization_id: string
           plan: string
           status: string
+          trial_ends_at: string | null
           xendit_customer_id: string | null
           xendit_plan_id: string | null
           xendit_subscription_id: string | null
@@ -1622,6 +1623,7 @@ export type Database = {
           organization_id: string
           plan?: string
           status?: string
+          trial_ends_at?: string | null
           xendit_customer_id?: string | null
           xendit_plan_id?: string | null
           xendit_subscription_id?: string | null
@@ -1633,6 +1635,7 @@ export type Database = {
           organization_id?: string
           plan?: string
           status?: string
+          trial_ends_at?: string | null
           xendit_customer_id?: string | null
           xendit_plan_id?: string | null
           xendit_subscription_id?: string | null

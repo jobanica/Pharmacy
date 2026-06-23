@@ -7,6 +7,7 @@ export type SubscriptionRow = {
   plan: string;
   status: string;
   current_period_end: string | null;
+  trial_ends_at: string | null;
   xendit_subscription_id: string | null;
 };
 
@@ -20,7 +21,7 @@ export async function getSubscription(): Promise<SubscriptionRow | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("subscriptions")
-    .select("plan, status, current_period_end, xendit_subscription_id")
+    .select("plan, status, current_period_end, trial_ends_at, xendit_subscription_id")
     .maybeSingle();
   return data ?? null;
 }
