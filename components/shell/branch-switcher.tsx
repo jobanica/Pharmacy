@@ -61,7 +61,7 @@ export function BranchSwitcher({
         {branches.map((branch) => (
           <DropdownMenuItem
             key={branch.id}
-            onSelect={() => switchTo(branch.id)}
+            onClick={() => switchTo(branch.id)}
             className="justify-between"
           >
             {branch.name}
