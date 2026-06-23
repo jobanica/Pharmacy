@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Building2, Check, ChevronsUpDown } from "lucide-react";
 
 import { setActiveBranchAction } from "@/lib/auth/actions";
@@ -28,14 +29,23 @@ export function BranchSwitcher({
   branches: BranchSummary[];
   activeBranchId: string;
 }) {
+  const router = useRouter();
   const [active, setActive] = React.useState(activeBranchId);
   const [isPending, startTransition] = React.useTransition();
   const current = branches.find((b) => b.id === active) ?? branches[0];
 
+  // Keep local state in sync if the active branch changes server-side.
+  React.useEffect(() => setActive(activeBranchId), [activeBranchId]);
+
   function selectBranch(branchId: string) {
     if (branchId === active) return;
     setActive(branchId);
-    startTransition(() => setActiveBranchAction(branchId));
+    startTransition(async () => {
+      await setActiveBranchAction(branchId);
+      // Explicitly re-fetch so every branch-scoped page (including the
+      // dashboard) reflects the new branch immediately.
+      router.refresh();
+    });
   }
 
   if (branches.length <= 1) {

@@ -36,7 +36,9 @@ export default async function DashboardPage({
   const from = sp.from ?? isoDaysAgo(29);
   const to = sp.to ?? today;
   const canViewAll = ctx.role === "owner" || ctx.role === "manager";
-  const branch = canViewAll ? (sp.branch ?? "all") : ctx.activeBranchId;
+  // Follow the header branch switcher by default; owners/managers can still
+  // override to "all" or another branch via the dashboard filter.
+  const branch = canViewAll ? (sp.branch ?? ctx.activeBranchId) : ctx.activeBranchId;
 
   const { startUtc } = manilaDayRange(from);
   const { endUtc } = manilaDayRange(to);
