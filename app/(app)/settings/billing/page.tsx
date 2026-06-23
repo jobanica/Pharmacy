@@ -16,7 +16,7 @@ export default async function SettingsBillingPage() {
       plans={plans}
       currentPlan={subscription?.plan ?? "free"}
       status={subscription?.status ?? "active"}
-      enabled={isBillingEnabled()}
+      enabled={await isBillingEnabled()}
     />
   );
 }

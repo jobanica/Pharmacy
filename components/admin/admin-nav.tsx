@@ -8,6 +8,7 @@ import {
   UserPlus,
   Layers,
   MessageSquare,
+  Wallet,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ const NAV = [
   { href: "/admin/subscriptions", label: "Subscriptions", icon: CreditCard },
   { href: "/admin/create-account", label: "Create account", icon: UserPlus },
   { href: "/admin/plans", label: "Plans", icon: Layers },
+  { href: "/admin/payments", label: "Payments", icon: Wallet },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
 ];
 

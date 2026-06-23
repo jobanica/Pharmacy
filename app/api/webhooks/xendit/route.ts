@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { serverEnv } from "@/lib/env";
+import { getPlatformBillingConfig } from "@/lib/billing/platform-config";
 import { createServiceClient } from "@/lib/supabase/service";
 
 /**
@@ -9,7 +9,7 @@ import { createServiceClient } from "@/lib/supabase/service";
  * service-role client because webhooks have no user session (RLS would block).
  */
 export async function POST(request: NextRequest) {
-  const token = serverEnv().XENDIT_WEBHOOK_TOKEN;
+  const { webhookToken: token } = await getPlatformBillingConfig();
   if (!token) {
     // Billing not configured — acknowledge so Xendit stops retrying.
     return NextResponse.json({ received: true, handled: false });

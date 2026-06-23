@@ -12,8 +12,8 @@ import "server-only";
  * The Xendit calls are intentionally minimal and isolated here so swapping
  * providers (or wiring the full recurring-plans API) touches only this file.
  */
-import { publicEnv, serverEnv } from "@/lib/env";
 import { getPlan, type PlanId } from "./plans";
+import { getPlatformBillingConfig } from "./platform-config";
 
 export type CheckoutResult =
   | { ok: true; redirectUrl: string }
@@ -106,9 +106,8 @@ function createXenditProvider(secretKey: string): BillingProvider {
   };
 }
 
-export function getBillingProvider(): BillingProvider {
-  if (!publicEnv.NEXT_PUBLIC_BILLING_ENABLED) return noopProvider;
-  const key = serverEnv().XENDIT_SECRET_KEY;
-  if (!key) return noopProvider;
-  return createXenditProvider(key);
+export async function getBillingProvider(): Promise<BillingProvider> {
+  const cfg = await getPlatformBillingConfig();
+  if (!cfg.enabled || !cfg.secretKey) return noopProvider;
+  return createXenditProvider(cfg.secretKey);
 }

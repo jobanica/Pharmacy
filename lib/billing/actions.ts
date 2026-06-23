@@ -15,7 +15,7 @@ export async function startCheckout(plan: PlanId): Promise<BillingResult> {
   const ctx = await requireAppContext();
   if (ctx.role !== "owner") return { error: "Only the owner can manage billing" };
 
-  const provider = getBillingProvider();
+  const provider = await getBillingProvider();
   if (!provider.enabled) {
     return { error: "Billing is disabled in this environment" };
   }
@@ -39,7 +39,7 @@ export async function cancelSubscription(): Promise<BillingResult> {
   const ctx = await requireAppContext();
   if (ctx.role !== "owner") return { error: "Only the owner can manage billing" };
 
-  const provider = getBillingProvider();
+  const provider = await getBillingProvider();
   if (!provider.enabled) return { error: "Billing is disabled in this environment" };
 
   const sub = await getSubscription();

@@ -1012,6 +1012,30 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_settings: {
+        Row: {
+          id: boolean
+          xendit_secret_key: string | null
+          xendit_webhook_token: string | null
+          billing_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          xendit_secret_key?: string | null
+          xendit_webhook_token?: string | null
+          billing_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          xendit_secret_key?: string | null
+          xendit_webhook_token?: string | null
+          billing_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       drug_interactions: {
         Row: {
           id: string

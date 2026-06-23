@@ -65,6 +65,45 @@ export async function updatePlan(
   return { ok: true };
 }
 
+const billingSchema = z.object({
+  enabled: z.boolean(),
+  // Omitted/empty => keep the stored value (so the secret never has to be
+  // re-entered just to toggle the flag).
+  secretKey: z.string().trim().optional(),
+  webhookToken: z.string().trim().optional(),
+});
+
+/**
+ * Super-admin: configure Xendit so the platform can charge subscribers.
+ * Stored in the service-role-only platform_settings table.
+ */
+export async function updatePlatformBilling(
+  input: z.input<typeof billingSchema>,
+): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  const parsed = billingSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { enabled, secretKey, webhookToken } = parsed.data;
+
+  const updates: {
+    id: boolean;
+    billing_enabled: boolean;
+    updated_at: string;
+    xendit_secret_key?: string;
+    xendit_webhook_token?: string;
+  } = { id: true, billing_enabled: enabled, updated_at: new Date().toISOString() };
+  // Only overwrite a credential when a new value was actually entered.
+  if (secretKey) updates.xendit_secret_key = secretKey;
+  if (webhookToken) updates.xendit_webhook_token = webhookToken;
+
+  const db = createServiceClient();
+  const { error } = await db.from("platform_settings").upsert(updates);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/payments");
+  return { ok: true };
+}
+
 const statusSchema = z.object({
   orgId: z.string().uuid(),
   status: z.enum(["active", "suspended"]),

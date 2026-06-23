@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import { publicEnv } from "@/lib/env";
+import { getPlatformBillingConfig } from "@/lib/billing/platform-config";
 
 export type SubscriptionRow = {
   plan: string;
@@ -10,8 +10,9 @@ export type SubscriptionRow = {
   xendit_subscription_id: string | null;
 };
 
-export function isBillingEnabled(): boolean {
-  return publicEnv.NEXT_PUBLIC_BILLING_ENABLED;
+export async function isBillingEnabled(): Promise<boolean> {
+  const cfg = await getPlatformBillingConfig();
+  return cfg.enabled && cfg.secretKey !== null;
 }
 
 /** The current org's subscription (owner-scoped by RLS). Null if none. */
