@@ -17,7 +17,7 @@ export default async function StorePage({
   return (
     <Storefront
       orgSlug={store.slug}
-      storeName={store.name}
+      storeName={store.brand.name}
       logoUrl={store.brand.logoUrl}
       branches={store.branches}
       products={store.products}

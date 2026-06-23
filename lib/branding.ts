@@ -25,7 +25,7 @@ const str = (v: unknown): string | null =>
   typeof v === "string" && v.trim() ? v.trim() : null;
 
 /** Parse an organization's jsonb settings into typed branding/receipt config. */
-export function readBrand(settings: Json | null | undefined): Brand {
+export function readBrand(settings: Json | null | undefined, fallbackName?: string): Brand {
   const root = (settings ?? {}) as {
     branding?: {
       brand_name?: unknown;
@@ -41,7 +41,7 @@ export function readBrand(settings: Json | null | undefined): Brand {
   const logo = str(b.logo_path);
 
   return {
-    name: str(b.brand_name) ?? publicEnv.NEXT_PUBLIC_APP_NAME,
+    name: str(b.brand_name) ?? fallbackName ?? publicEnv.NEXT_PUBLIC_APP_NAME,
     logoUrl: logo ? logoPublicUrl(logo) : null,
     receipt: {
       header: str(r.header),

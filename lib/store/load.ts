@@ -62,7 +62,7 @@ export async function loadStore(
   return {
     slug: org.slug,
     name: org.name,
-    brand: readBrand(org.settings),
+    brand: readBrand(org.settings, org.name),
     branches,
     products: products ?? [],
   };
