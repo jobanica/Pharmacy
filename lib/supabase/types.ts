@@ -126,6 +126,113 @@ export type Database = {
           },
         ]
       }
+      employees: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string | null
+          user_id: string | null
+          full_name: string
+          position: string | null
+          email: string | null
+          phone: string | null
+          pay_type: Database["public"]["Enums"]["employee_pay_type"]
+          pay_rate_centavos: number
+          work_start: string
+          work_hours_per_day: number
+          grace_minutes: number
+          hire_date: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id?: string | null
+          user_id?: string | null
+          full_name: string
+          position?: string | null
+          email?: string | null
+          phone?: string | null
+          pay_type?: Database["public"]["Enums"]["employee_pay_type"]
+          pay_rate_centavos?: number
+          work_start?: string
+          work_hours_per_day?: number
+          grace_minutes?: number
+          hire_date?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string | null
+          user_id?: string | null
+          full_name?: string
+          position?: string | null
+          email?: string | null
+          phone?: string | null
+          pay_type?: Database["public"]["Enums"]["employee_pay_type"]
+          pay_rate_centavos?: number
+          work_start?: string
+          work_hours_per_day?: number
+          grace_minutes?: number
+          hire_date?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          id: string
+          organization_id: string
+          employee_id: string
+          leave_type: Database["public"]["Enums"]["leave_kind"]
+          start_date: string
+          end_date: string
+          reason: string | null
+          status: Database["public"]["Enums"]["leave_status"]
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          employee_id: string
+          leave_type?: Database["public"]["Enums"]["leave_kind"]
+          start_date: string
+          end_date: string
+          reason?: string | null
+          status?: Database["public"]["Enums"]["leave_status"]
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          employee_id?: string
+          leave_type?: Database["public"]["Enums"]["leave_kind"]
+          start_date?: string
+          end_date?: string
+          reason?: string | null
+          status?: Database["public"]["Enums"]["leave_status"]
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batches: {
         Row: {
           batch_number: string | null
@@ -2072,6 +2179,15 @@ export type Database = {
     }
     Enums: {
       attendance_kind: "clock_in" | "clock_out"
+      employee_pay_type: "hourly" | "daily" | "monthly"
+      leave_kind:
+        | "vacation"
+        | "sick"
+        | "emergency"
+        | "unpaid"
+        | "maternity"
+        | "paternity"
+      leave_status: "pending" | "approved" | "rejected"
       fulfillment_type: "pickup" | "delivery"
       loyalty_kind: "earn" | "redeem" | "adjust"
       membership_status: "active" | "suspended"
@@ -2266,6 +2382,11 @@ export type SaleStatus = Database["public"]["Enums"]["sale_status"];
 export type PaymentMethod = Database["public"]["Enums"]["payment_method"];
 export type PoStatus = Database["public"]["Enums"]["po_status"];
 export type AttendanceKind = Database["public"]["Enums"]["attendance_kind"];
+export type EmployeePayType = Database["public"]["Enums"]["employee_pay_type"];
+export type LeaveKind = Database["public"]["Enums"]["leave_kind"];
+export type LeaveStatus = Database["public"]["Enums"]["leave_status"];
+export type Employee = Database["public"]["Tables"]["employees"]["Row"];
+export type LeaveRequest = Database["public"]["Tables"]["leave_requests"]["Row"];
 export type LoyaltyKind = Database["public"]["Enums"]["loyalty_kind"];
 export type OrderStatus = Database["public"]["Enums"]["order_status"];
 export type FulfillmentType = Database["public"]["Enums"]["fulfillment_type"];

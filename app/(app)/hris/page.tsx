@@ -15,6 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ProUpsell } from "@/components/hris/pro-upsell";
+import { HrisNav } from "@/components/hris/hris-nav";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
@@ -75,9 +76,10 @@ export default async function HrisPage() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Time & Attendance"
-        description="Staff clock in/out by scanning a branch QR — a selfie is captured for verification."
+        title="HR & Payroll"
+        description="Employees, attendance, timesheets, leave and printable payroll."
       />
+      <HrisNav />
 
       <section>
         <h2 className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
