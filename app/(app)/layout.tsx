@@ -1,3 +1,4 @@
+import type React from "react";
 import Link from "next/link";
 
 import { requireAppContext } from "@/lib/auth/session";
@@ -23,8 +24,15 @@ export default async function AppLayout({
   const brand = readBrand(ctx.organization.settings);
   const isPlatformAdmin = Boolean(await getPlatformAdmin());
 
+  const brandStyle = brand.brandColor
+    ? ({ "--brand": brand.brandColor } as React.CSSProperties)
+    : undefined;
+
   return (
-    <div className="dark app-shell grid h-screen grid-rows-[auto_1fr] overflow-hidden text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1">
+    <div
+      className="dark app-shell grid h-screen grid-rows-[auto_1fr] overflow-hidden text-foreground md:grid-cols-[260px_1fr] md:grid-rows-1"
+      style={brandStyle}
+    >
       <NewOrderWatcher orgId={ctx.organization.id} />
       {/* Sidebar */}
       <aside className="hidden border-r border-white/10 bg-white/[0.04] backdrop-blur-xl md:flex md:h-screen md:flex-col md:overflow-hidden">

@@ -25,6 +25,7 @@ export default async function CustomDomainStorePage() {
       orgSlug={store.slug}
       storeName={store.brand.name}
       logoUrl={store.brand.logoUrl}
+      brandColor={store.brand.brandColor}
       branches={store.branches}
       products={store.products}
     />

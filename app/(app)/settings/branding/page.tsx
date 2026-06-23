@@ -14,6 +14,7 @@ export default async function SettingsBrandingPage() {
     <BrandingSettings
       appName={publicEnv.NEXT_PUBLIC_APP_NAME}
       brandName={brand.name}
+      brandColor={brand.brandColor}
       logoUrl={brand.logoUrl}
       header={brand.receipt.header ?? ""}
       footer={brand.receipt.footer ?? ""}

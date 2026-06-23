@@ -12,6 +12,7 @@ export type Result = { ok: true } | { error: string };
 
 const brandingSchema = z.object({
   brandName: z.string().max(60).optional().or(z.literal("")),
+  brandColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional(),
   receiptHeader: z.string().max(400).optional().or(z.literal("")),
   receiptFooter: z.string().max(400).optional().or(z.literal("")),
   paper: z.enum(["58mm", "80mm", "A4"]),
@@ -39,6 +40,7 @@ export async function updateBranding(input: BrandingInput): Promise<Result> {
   const next = {
     ...branding,
     brand_name: parsed.data.brandName?.trim() || null,
+    brand_color: parsed.data.brandColor ?? branding.brand_color ?? null,
     receipt: {
       header: parsed.data.receiptHeader?.trim() || null,
       footer: parsed.data.receiptFooter?.trim() || null,

@@ -20,6 +20,7 @@ type PrinterType = "bluetooth" | "browser";
 export function BrandingSettings({
   appName,
   brandName,
+  brandColor,
   logoUrl,
   header,
   footer,
@@ -29,6 +30,7 @@ export function BrandingSettings({
 }: {
   appName: string;
   brandName: string;
+  brandColor: string | null;
   logoUrl: string | null;
   header: string;
   footer: string;
@@ -40,6 +42,7 @@ export function BrandingSettings({
   const [pending, start] = React.useTransition();
   const [form, setForm] = React.useState({
     brandName: brandName === appName ? "" : brandName,
+    brandColor: brandColor ?? "#6d28d9",
     header,
     footer,
     paper,
@@ -52,6 +55,7 @@ export function BrandingSettings({
     start(async () => {
       const res = await updateBranding({
         brandName: form.brandName,
+        brandColor: form.brandColor || null,
         receiptHeader: form.header,
         receiptFooter: form.footer,
         paper: form.paper,
@@ -112,9 +116,37 @@ export function BrandingSettings({
               placeholder={appName}
             />
             <p className="text-xs text-muted-foreground">
-              Shown in the sidebar and on receipts. Leave blank to use “{appName}”.
+              Shown in the sidebar and on receipts. Leave blank to use "{appName}".
             </p>
           </div>
+          <div className="grid gap-2">
+            <Label>Brand color</Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                value={form.brandColor}
+                onChange={(e) => setForm((f) => ({ ...f, brandColor: e.target.value }))}
+                className="h-9 w-12 cursor-pointer rounded-md border bg-transparent p-1"
+              />
+              <Input
+                value={form.brandColor}
+                onChange={(e) => setForm((f) => ({ ...f, brandColor: e.target.value }))}
+                placeholder="#6d28d9"
+                className="h-9 w-28 font-mono"
+                maxLength={7}
+              />
+              <div
+                className="size-8 rounded-lg border"
+                style={{ backgroundColor: form.brandColor }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Applied to buttons and accent elements in the dashboard and storefront.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label>Logo</Label>
             <div className="flex items-center gap-3">

@@ -8,6 +8,7 @@ export type PrinterType = "bluetooth" | "browser";
 export type Brand = {
   name: string;
   logoUrl: string | null;
+  brandColor: string | null;
   receipt: {
     header: string | null;
     footer: string | null;
@@ -30,6 +31,7 @@ export function readBrand(settings: Json | null | undefined, fallbackName?: stri
     branding?: {
       brand_name?: unknown;
       logo_path?: unknown;
+      brand_color?: unknown;
       receipt?: { header?: unknown; footer?: unknown; paper?: unknown; auto_print?: unknown; printer_type?: unknown };
     };
   };
@@ -40,9 +42,13 @@ export function readBrand(settings: Json | null | undefined, fallbackName?: stri
   const printerType: PrinterType = r.printer_type === "bluetooth" ? "bluetooth" : "browser";
   const logo = str(b.logo_path);
 
+  const colorRaw = str(b.brand_color);
+  const brandColor = colorRaw && /^#[0-9a-fA-F]{6}$/.test(colorRaw) ? colorRaw : null;
+
   return {
     name: str(b.brand_name) ?? fallbackName ?? publicEnv.NEXT_PUBLIC_APP_NAME,
     logoUrl: logo ? logoPublicUrl(logo) : null,
+    brandColor,
     receipt: {
       header: str(r.header),
       footer: str(r.footer),

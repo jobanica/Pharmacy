@@ -44,12 +44,14 @@ export function Storefront({
   orgSlug,
   storeName,
   logoUrl,
+  brandColor,
   branches,
   products,
 }: {
   orgSlug: string;
   storeName: string;
   logoUrl: string | null;
+  brandColor?: string | null;
   branches: Branch[];
   products: Product[];
 }) {
@@ -133,11 +135,15 @@ export function Storefront({
     });
   }
 
+  const brandStyle = brandColor
+    ? ({ "--brand": brandColor } as React.CSSProperties)
+    : undefined;
+
   // ── Order success ────────────────────────────────────────────────────────────
   if (placed) {
     const branch = branches.find((b) => b.id === branchId);
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="store-root min-h-screen bg-gray-50" style={brandStyle}>
         <StoreHeader storeName={storeName} logoUrl={logoUrl} />
         <div className="mx-auto max-w-lg px-4 py-20 text-center">
           <div className="mb-6 flex justify-center">
@@ -194,7 +200,7 @@ export function Storefront({
 
   // ── Main storefront ──────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="store-root min-h-screen bg-gray-50" style={brandStyle}>
       {/* Header */}
       <StoreHeader
         storeName={storeName}
