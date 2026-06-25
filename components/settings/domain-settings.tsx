@@ -18,10 +18,59 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { setCustomDomain, removeCustomDomain } from "@/lib/domains/actions";
 
+/** True when the domain is an apex (e.g. mypharmacy.ph — no sub-label). */
+function isApex(domain: string): boolean {
+  const parts = domain.replace(/^https?:\/\//, "").split(".");
+  return parts.length === 2;
+}
+
+function DnsTable({ domain }: { domain: string }) {
+  const apex = isApex(domain);
+  const label = domain.split(".")[0];
+
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border">
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
+          <tr>
+            <th className="px-3 py-2">Type</th>
+            <th className="px-3 py-2">Name</th>
+            <th className="px-3 py-2">Value</th>
+          </tr>
+        </thead>
+        <tbody className="font-mono">
+          {apex ? (
+            <>
+              <tr className="border-t border-border">
+                <td className="px-3 py-2">A</td>
+                <td className="px-3 py-2">@</td>
+                <td className="px-3 py-2">76.76.21.21</td>
+              </tr>
+              <tr className="border-t border-border text-muted-foreground">
+                <td className="px-3 py-2">CNAME</td>
+                <td className="px-3 py-2">www</td>
+                <td className="px-3 py-2">cname.vercel-dns.com</td>
+              </tr>
+            </>
+          ) : (
+            <tr className="border-t border-border">
+              <td className="px-3 py-2">CNAME</td>
+              <td className="px-3 py-2">{label}</td>
+              <td className="px-3 py-2">cname.vercel-dns.com</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function DomainSettings({ currentDomain }: { currentDomain: string | null }) {
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [domain, setDomain] = React.useState(currentDomain ?? "");
+
+  const displayDomain = currentDomain ?? domain.trim();
 
   function save() {
     if (!domain.trim()) {
@@ -107,7 +156,7 @@ export function DomainSettings({ currentDomain }: { currentDomain: string | null
                 id="domain"
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
-                placeholder="shop.mypharmacy.ph"
+                placeholder="mypharmacy.ph or shop.mypharmacy.ph"
                 className="max-w-xs"
               />
               <Button onClick={save} disabled={pending}>
@@ -116,7 +165,7 @@ export function DomainSettings({ currentDomain }: { currentDomain: string | null
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Use a subdomain you control, like <code>shop.yourpharmacy.com</code>.
+              Works with apex domains (<code>mypharmacy.ph</code>) and subdomains (<code>shop.mypharmacy.ph</code>).
             </p>
           </div>
         </CardContent>
@@ -126,37 +175,26 @@ export function DomainSettings({ currentDomain }: { currentDomain: string | null
         <CardHeader>
           <CardTitle className="text-base">Point your DNS</CardTitle>
           <CardDescription>
-            After saving, add this record at your domain registrar. Changes can
+            After saving, add these records at your domain registrar. Changes can
             take up to a few hours to take effect.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2">Type</th>
-                  <th className="px-3 py-2">Name</th>
-                  <th className="px-3 py-2">Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-t border-border font-mono">
-                  <td className="px-3 py-2">CNAME</td>
-                  <td className="px-3 py-2">
-                    {currentDomain ? currentDomain.split(".")[0] : "shop"}
-                  </td>
-                  <td className="px-3 py-2">cname.vercel-dns.com</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Once the DNS record resolves, your storefront will be live on your
-            domain. If the domain hasn&apos;t been added to the hosting project
-            yet, ask your administrator to add it so the SSL certificate can be
-            issued.
-          </p>
+          <DnsTable domain={displayDomain || "shop.example.com"} />
+          {displayDomain && isApex(displayDomain) ? (
+            <p className="text-xs text-muted-foreground">
+              The <strong>A</strong> record points your root domain to the server.
+              The <strong>CNAME</strong> for <code>www</code> is optional but recommended
+              so visitors who type <code>www.{displayDomain}</code> also reach your store.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Once the DNS record resolves, your storefront will be live on your
+              domain. If the domain hasn&apos;t been added to the hosting project
+              yet, ask your administrator to add it so the SSL certificate can be
+              issued.
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
