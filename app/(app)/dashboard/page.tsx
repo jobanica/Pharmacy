@@ -5,11 +5,13 @@ import { Coins, Receipt, Boxes, TrendingUp, type LucideIcon } from "lucide-react
 import { Badge } from "@/components/ui/badge";
 import { DashboardFilters } from "@/components/dashboard/filters";
 import { SalesAnalytics, MarginDonut, type SalesPoint } from "@/components/dashboard/charts";
+import { TrialBanner } from "@/components/dashboard/trial-banner";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import { manilaBusinessDay, manilaDayRange, isoDaysAgo, formatManila } from "@/lib/date";
+import { expireTrials, getSubscription } from "@/lib/billing/service";
 
 function enumerateDays(from: string, to: string): string[] {
   const days: string[] = [];
@@ -27,9 +29,13 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; branch?: string }>;
 }) {
+  // Lazy-expire trials so downgrade happens without a cron job.
+  await expireTrials();
+
   const ctx = await requireAppContext();
   if (!can(ctx.role, "view_reports")) notFound();
   const supabase = await createClient();
+  const subscription = await getSubscription();
 
   const sp = await searchParams;
   const today = manilaBusinessDay();
@@ -117,6 +123,10 @@ export default async function DashboardPage({
         </div>
         <DashboardFilters branches={ctx.branches} allowAll={canViewAll} from={from} to={to} branch={branch} />
       </div>
+
+      {subscription?.status === "trialing" && subscription.trial_ends_at ? (
+        <TrialBanner trialEndsAt={subscription.trial_ends_at} />
+      ) : null}
 
       {/* Gradient stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -16,6 +16,12 @@ export async function isBillingEnabled(): Promise<boolean> {
   return cfg.enabled && cfg.secretKey !== null;
 }
 
+/** Expire any Pro trials that have passed their end date (lazy, called from dashboard). */
+export async function expireTrials(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.rpc("expire_trials");
+}
+
 /** The current org's subscription (owner-scoped by RLS). Null if none. */
 export async function getSubscription(): Promise<SubscriptionRow | null> {
   const supabase = await createClient();

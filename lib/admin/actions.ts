@@ -191,6 +191,17 @@ export async function createAccount(
     is_active: true,
   });
 
+  // Every new account gets a 30-day Pro trial automatically.
+  const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  await db.from("subscriptions").insert({
+    organization_id: org.id,
+    plan: "pro",
+    status: "trialing",
+    trial_ends_at: trialEndsAt,
+  });
+  // Set org plan to pro so feature gates reflect the trial immediately.
+  await db.from("organizations").update({ plan: "pro" }).eq("id", org.id);
+
   // Generate a one-time magic link so the pharmacy can log in without knowing the temp password.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
