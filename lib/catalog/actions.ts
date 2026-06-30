@@ -114,6 +114,112 @@ export async function setProductActive(
   return { ok: true };
 }
 
+export type ImportRow = {
+  name?: string;
+  genericName?: string;
+  category?: string;
+  sku?: string;
+  barcode?: string;
+  unit?: string;
+  price?: string | number;
+  reorderPoint?: string | number;
+  requiresPrescription?: string | boolean;
+};
+
+export type ImportResult =
+  | { ok: true; created: number; skipped: number; errors: string[] }
+  | { error: string };
+
+function toBool(v: string | boolean | undefined): boolean {
+  if (typeof v === "boolean") return v;
+  const t = (v ?? "").toString().trim().toLowerCase();
+  return t === "yes" || t === "true" || t === "1" || t === "y";
+}
+
+/**
+ * Bulk-create products from parsed CSV rows. Categories are matched by name
+ * (case-insensitive) and created on the fly when missing. Rows that fail
+ * validation are skipped and reported; valid rows still import.
+ */
+export async function importProductsCsv(rows: ImportRow[]): Promise<ImportResult> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { error: "No rows found in the file" };
+  }
+  if (rows.length > 2000) {
+    return { error: "Too many rows — import up to 2000 at a time" };
+  }
+
+  const supabase = await createClient();
+  const orgId = g.ctx.organization.id;
+
+  // Build a name -> id map of existing categories so we can resolve/create.
+  const { data: existingCats } = await supabase
+    .from("categories")
+    .select("id, name")
+    .eq("organization_id", orgId);
+  const catByName = new Map<string, string>();
+  for (const c of existingCats ?? []) catByName.set(c.name.trim().toLowerCase(), c.id);
+
+  async function resolveCategory(name: string): Promise<string | null> {
+    const key = name.trim().toLowerCase();
+    if (!key) return null;
+    const hit = catByName.get(key);
+    if (hit) return hit;
+    const { data, error } = await supabase
+      .from("categories")
+      .insert({ organization_id: orgId, name: name.trim() })
+      .select("id")
+      .single();
+    if (error || !data) return null;
+    catByName.set(key, data.id);
+    return data.id;
+  }
+
+  const errors: string[] = [];
+  let created = 0;
+  let skipped = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const raw = rows[i];
+    const lineNo = i + 2; // +1 for 0-index, +1 for header row
+
+    const parsed = productSchema.safeParse({
+      name: raw.name,
+      genericName: raw.genericName ?? "",
+      sku: raw.sku ?? "",
+      barcode: raw.barcode ?? "",
+      unit: (raw.unit ?? "").toString().trim() || "piece",
+      requiresPrescription: toBool(raw.requiresPrescription),
+      reorderPoint: raw.reorderPoint ?? 0,
+      price: raw.price ?? 0,
+      isActive: true,
+    });
+    if (!parsed.success) {
+      skipped++;
+      errors.push(`Row ${lineNo}: ${parsed.error.issues[0].message}`);
+      continue;
+    }
+
+    const categoryId = raw.category ? await resolveCategory(raw.category.toString()) : null;
+    const row = { ...productRow(parsed.data, orgId), category_id: categoryId };
+
+    const { error } = await supabase.from("products").insert(row);
+    if (error) {
+      skipped++;
+      errors.push(`Row ${lineNo} (${parsed.data.name}): ${uniqueMessage(error.code, error.details) ?? error.message}`);
+      continue;
+    }
+    created++;
+  }
+
+  revalidatePath("/inventory");
+  // Cap the reported errors so the payload stays small.
+  return { ok: true, created, skipped, errors: errors.slice(0, 50) };
+}
+
+
 // ---------------------------------------------------------------------------
 // Categories
 // ---------------------------------------------------------------------------

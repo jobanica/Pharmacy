@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Sparkles, ArrowUpDown } from "lucide-react";
+import { Pencil, Plus, Sparkles, ArrowUpDown, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { ProductDialog, type ProductRow } from "./product-dialog";
 import { ScanReceiptDialog } from "./scan-receipt-dialog";
+import { ImportCsvDialog } from "./import-csv-dialog";
 import { setProductActive } from "@/lib/catalog/actions";
 import { formatCentavos } from "@/lib/money";
 import { daysUntil } from "@/lib/date";
@@ -268,6 +269,16 @@ export function ProductsTable({
               </option>
             ))}
           </select>
+          {canManage ? (
+            <ImportCsvDialog
+              trigger={
+                <Button variant="outline">
+                  <FileSpreadsheet className="size-4" />
+                  Import CSV
+                </Button>
+              }
+            />
+          ) : null}
           {canManage ? (
             <ScanReceiptDialog
               suppliers={suppliers}
