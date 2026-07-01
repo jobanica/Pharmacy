@@ -7,14 +7,18 @@ import { CreatePoForm } from "@/components/purchase-orders/create-po-form";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export default async function NewPurchaseOrderPage() {
   const ctx = await requireAppContext();
   if (!can(ctx.role, "use_purchase_orders")) notFound();
   const supabase = await createClient();
 
-  const [{ data: products }, { data: suppliers }, { data: lowStock }] = await Promise.all([
-    supabase.from("products").select("id, name").eq("is_active", true).order("name"),
+  const [products, { data: suppliers }, { data: lowStock }] = await Promise.all([
+    // Page through so all products are searchable (PostgREST caps at 1000).
+    fetchAllRows((from, to) =>
+      supabase.from("products").select("id, name").eq("is_active", true).order("name").range(from, to),
+    ),
     supabase.from("suppliers").select("id, name").order("name"),
     supabase
       .from("v_low_stock")

@@ -7,6 +7,7 @@ import { can } from "@/lib/auth/roles";
 import { aiReceiptEnabled } from "@/lib/ai/receipt";
 import { canUseInventory } from "@/lib/billing/plans";
 import { PlanUpsell } from "@/components/billing/plan-upsell";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export default async function InventoryPage() {
   const ctx = await requireAppContext();
@@ -27,14 +28,18 @@ export default async function InventoryPage() {
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
     "the active branch";
 
-  const [{ data: products }, { data: categories }, { data: onHand }, { data: suppliers }, { data: batches }] =
+  const [products, { data: categories }, { data: onHand }, { data: suppliers }, { data: batches }] =
     await Promise.all([
-      supabase
-        .from("products")
-        .select(
-          "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, categories(name)",
-        )
-        .order("name", { ascending: true }),
+      // Page through so all products load (PostgREST caps a response at 1000).
+      fetchAllRows((from, to) =>
+        supabase
+          .from("products")
+          .select(
+            "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, categories(name)",
+          )
+          .order("name", { ascending: true })
+          .range(from, to),
+      ),
       supabase.from("categories").select("id, name").order("name"),
       supabase
         .from("v_product_on_hand")
