@@ -69,16 +69,33 @@ const HEADER_MAP: Record<string, keyof ImportRow> = {
   generic: "genericName",
   "generic name": "genericName",
   genericname: "genericName",
+  generic_name: "genericName",
   category: "category",
   sku: "sku",
   barcode: "barcode",
   unit: "unit",
+  cost: "cost",
+  "cost price": "cost",
+  "unit cost": "cost",
   price: "price",
   "selling price": "price",
+  srp: "price",
+  quantity: "quantity",
+  qty: "quantity",
+  "on hand": "quantity",
+  onhand: "quantity",
+  stock: "quantity",
+  "opening stock": "quantity",
+  expiry: "expiry",
+  "expiry date": "expiry",
+  expiration: "expiry",
+  expire: "expiry",
   "reorder point": "reorderPoint",
   reorderpoint: "reorderPoint",
+  reorder_point: "reorderPoint",
   reorder: "reorderPoint",
   "requires prescription": "requiresPrescription",
+  requires_prescription: "requiresPrescription",
   prescription: "requiresPrescription",
   rx: "requiresPrescription",
 };
@@ -103,9 +120,9 @@ function rowsToImport(grid: string[][]): { rows: ImportRow[]; error?: string } {
 }
 
 const TEMPLATE =
-  "name,generic_name,category,sku,barcode,unit,price,reorder_point,requires_prescription\n" +
-  "Biogesic 500mg,Paracetamol,Pain Relief,BIO500,4801234567890,piece,5.50,20,no\n" +
-  "Amoxicillin 500mg,Amoxicillin,Antibiotics,AMOX500,,capsule,12.00,30,yes\n";
+  "name,generic_name,category,sku,barcode,cost,unit,price,quantity,expiry,reorder_point,requires_prescription\n" +
+  "Biogesic 500mg,Paracetamol,Pain Relief,BIO500,4801234567890,3.80,piece,5.50,100,27-Apr,20,no\n" +
+  "Amoxicillin 500mg,Amoxicillin,Antibiotics,AMOX500,,9.00,capsule,12.00,50,2027-06-30,30,yes\n";
 
 export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
   const router = useRouter();
@@ -113,7 +130,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
   const [rows, setRows] = React.useState<ImportRow[]>([]);
   const [fileName, setFileName] = React.useState("");
   const [importing, startImport] = React.useTransition();
-  const [report, setReport] = React.useState<{ created: number; skipped: number; errors: string[] } | null>(null);
+  const [report, setReport] = React.useState<{ created: number; skipped: number; batches: number; errors: string[] } | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   function reset() {
@@ -166,7 +183,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
         toast.error(res.error);
         return;
       }
-      setReport({ created: res.created, skipped: res.skipped, errors: res.errors });
+      setReport({ created: res.created, skipped: res.skipped, batches: res.batches, errors: res.errors });
       if (res.created > 0) {
         toast.success(`Imported ${res.created} product${res.created !== 1 ? "s" : ""}.`);
         router.refresh();
@@ -195,8 +212,9 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
           </DialogTitle>
           <DialogDescription>
             Upload a CSV with a header row. Required column: <code>name</code>. Optional:
-            generic_name, category, sku, barcode, unit, price, reorder_point,
-            requires_prescription. Categories are created automatically.
+            generic_name, category, sku, barcode, cost, unit, price, quantity (on hand),
+            expiry, reorder_point, requires_prescription. Categories are created
+            automatically, and rows with a quantity get an opening stock batch.
           </DialogDescription>
         </DialogHeader>
 
@@ -235,9 +253,10 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                     <tr>
                       <th className="px-2 py-1.5">Name</th>
                       <th className="px-2 py-1.5">Category</th>
-                      <th className="px-2 py-1.5">Unit</th>
+                      <th className="px-2 py-1.5 text-right">Cost</th>
                       <th className="px-2 py-1.5 text-right">Price</th>
-                      <th className="px-2 py-1.5 text-right">Reorder</th>
+                      <th className="px-2 py-1.5 text-right">On hand</th>
+                      <th className="px-2 py-1.5">Expiry</th>
                       <th className="px-2 py-1.5 text-center">Rx</th>
                     </tr>
                   </thead>
@@ -246,9 +265,10 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                       <tr key={i} className="border-t">
                         <td className="px-2 py-1.5">{r.name?.toString()}</td>
                         <td className="px-2 py-1.5">{r.category?.toString() || "—"}</td>
-                        <td className="px-2 py-1.5">{r.unit?.toString() || "piece"}</td>
+                        <td className="px-2 py-1.5 text-right">{r.cost?.toString() || "—"}</td>
                         <td className="px-2 py-1.5 text-right">{r.price?.toString() || "0"}</td>
-                        <td className="px-2 py-1.5 text-right">{r.reorderPoint?.toString() || "0"}</td>
+                        <td className="px-2 py-1.5 text-right">{r.quantity?.toString() || "—"}</td>
+                        <td className="px-2 py-1.5">{r.expiry?.toString() || "—"}</td>
                         <td className="px-2 py-1.5 text-center">
                           {["yes", "true", "1", "y"].includes((r.requiresPrescription ?? "").toString().trim().toLowerCase()) ? "✓" : ""}
                         </td>
@@ -266,6 +286,9 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                 <span className="font-medium text-emerald-600 dark:text-emerald-500">
                   {report.created} imported
                 </span>
+                {report.batches > 0 ? (
+                  <span className="text-muted-foreground"> · {report.batches} with opening stock</span>
+                ) : null}
                 {report.skipped > 0 ? (
                   <span className="text-muted-foreground"> · {report.skipped} skipped</span>
                 ) : null}

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAppContext, type AppContext } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { pesosToCentavos } from "@/lib/money";
+import type { Json } from "@/lib/supabase/types";
 import {
   productSchema,
   categorySchema,
@@ -121,13 +122,16 @@ export type ImportRow = {
   sku?: string;
   barcode?: string;
   unit?: string;
+  cost?: string | number;
   price?: string | number;
+  quantity?: string | number;
+  expiry?: string;
   reorderPoint?: string | number;
   requiresPrescription?: string | boolean;
 };
 
 export type ImportResult =
-  | { ok: true; created: number; skipped: number; errors: string[] }
+  | { ok: true; created: number; skipped: number; batches: number; errors: string[] }
   | { error: string };
 
 function toBool(v: string | boolean | undefined): boolean {
@@ -136,10 +140,64 @@ function toBool(v: string | boolean | undefined): boolean {
   return t === "yes" || t === "true" || t === "1" || t === "y";
 }
 
+function toInt(v: string | number | undefined): number {
+  const n = typeof v === "number" ? v : parseInt((v ?? "").toString().trim(), 10);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
+}
+
+/** Pesos (string/number) -> integer centavos. Blank/invalid -> 0. */
+function toCentavos(v: string | number | undefined): number {
+  const n = typeof v === "number" ? v : parseFloat((v ?? "").toString().replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : 0;
+}
+
+const MONTHS: Record<string, number> = {
+  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+  jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+};
+
 /**
- * Bulk-create products from parsed CSV rows. Categories are matched by name
- * (case-insensitive) and created on the fly when missing. Rows that fail
- * validation are skipped and reported; valid rows still import.
+ * Normalize an expiry cell to YYYY-MM-DD, or null when blank/unparseable.
+ * Handles ISO dates and short pharmacy formats like "27-Apr" / "Apr-27"
+ * (year 2027, April), defaulting to the first day of the month.
+ */
+function normalizeExpiry(raw: string | undefined): string | null {
+  const s = (raw ?? "").trim();
+  if (!s) return null;
+
+  // Already ISO (YYYY-MM-DD or YYYY/MM/DD)
+  const iso = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (iso) {
+    const [, y, m, d] = iso;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+
+  // "27-Apr" / "Apr-27" / "27 Apr" — a two-digit year + month name.
+  const parts = s.split(/[-/\s]+/).filter(Boolean);
+  if (parts.length === 2) {
+    let year: number | null = null;
+    let month: number | null = null;
+    for (const p of parts) {
+      const mon = MONTHS[p.slice(0, 3).toLowerCase()];
+      if (mon) month = mon;
+      else if (/^\d{1,4}$/.test(p)) {
+        const num = parseInt(p, 10);
+        year = num < 100 ? 2000 + num : num;
+      }
+    }
+    if (year && month) {
+      return `${year}-${String(month).padStart(2, "0")}-01`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Bulk-create products (and opening-stock batches) from parsed CSV rows in a
+ * single database round-trip. Categories are matched by name (case-insensitive)
+ * and created on the fly. Rows with a positive on-hand quantity also get an
+ * opening batch with the given cost and expiry. Invalid rows are skipped and
+ * reported; valid rows still import.
  */
 export async function importProductsCsv(rows: ImportRow[]): Promise<ImportResult> {
   const g = await guard();
@@ -147,76 +205,48 @@ export async function importProductsCsv(rows: ImportRow[]): Promise<ImportResult
   if (!Array.isArray(rows) || rows.length === 0) {
     return { error: "No rows found in the file" };
   }
-  if (rows.length > 2000) {
-    return { error: "Too many rows — import up to 2000 at a time" };
+  if (rows.length > 5000) {
+    return { error: "Too many rows — import up to 5000 at a time" };
   }
+
+  // Build a plain JSON payload the Postgres import function understands.
+  const payload = rows.map((r) => ({
+    name: (r.name ?? "").toString().trim(),
+    generic_name: (r.genericName ?? "").toString().trim(),
+    category: (r.category ?? "").toString().trim(),
+    sku: (r.sku ?? "").toString().trim(),
+    barcode: (r.barcode ?? "").toString().trim(),
+    unit: (r.unit ?? "").toString().trim() || "piece",
+    price_centavos: toCentavos(r.price),
+    cost_centavos: toCentavos(r.cost),
+    quantity: toInt(r.quantity),
+    expiry: normalizeExpiry(r.expiry?.toString()),
+    reorder_point: toInt(r.reorderPoint),
+    requires_prescription: toBool(r.requiresPrescription),
+  }));
 
   const supabase = await createClient();
-  const orgId = g.ctx.organization.id;
+  const { data, error } = await supabase.rpc("import_products", {
+    p_branch: g.ctx.activeBranchId,
+    p_rows: payload as unknown as Json,
+  });
+  if (error) return { error: error.message };
 
-  // Build a name -> id map of existing categories so we can resolve/create.
-  const { data: existingCats } = await supabase
-    .from("categories")
-    .select("id, name")
-    .eq("organization_id", orgId);
-  const catByName = new Map<string, string>();
-  for (const c of existingCats ?? []) catByName.set(c.name.trim().toLowerCase(), c.id);
-
-  async function resolveCategory(name: string): Promise<string | null> {
-    const key = name.trim().toLowerCase();
-    if (!key) return null;
-    const hit = catByName.get(key);
-    if (hit) return hit;
-    const { data, error } = await supabase
-      .from("categories")
-      .insert({ organization_id: orgId, name: name.trim() })
-      .select("id")
-      .single();
-    if (error || !data) return null;
-    catByName.set(key, data.id);
-    return data.id;
-  }
-
-  const errors: string[] = [];
-  let created = 0;
-  let skipped = 0;
-
-  for (let i = 0; i < rows.length; i++) {
-    const raw = rows[i];
-    const lineNo = i + 2; // +1 for 0-index, +1 for header row
-
-    const parsed = productSchema.safeParse({
-      name: raw.name,
-      genericName: raw.genericName ?? "",
-      sku: raw.sku ?? "",
-      barcode: raw.barcode ?? "",
-      unit: (raw.unit ?? "").toString().trim() || "piece",
-      requiresPrescription: toBool(raw.requiresPrescription),
-      reorderPoint: raw.reorderPoint ?? 0,
-      price: raw.price ?? 0,
-      isActive: true,
-    });
-    if (!parsed.success) {
-      skipped++;
-      errors.push(`Row ${lineNo}: ${parsed.error.issues[0].message}`);
-      continue;
-    }
-
-    const categoryId = raw.category ? await resolveCategory(raw.category.toString()) : null;
-    const row = { ...productRow(parsed.data, orgId), category_id: categoryId };
-
-    const { error } = await supabase.from("products").insert(row);
-    if (error) {
-      skipped++;
-      errors.push(`Row ${lineNo} (${parsed.data.name}): ${uniqueMessage(error.code, error.details) ?? error.message}`);
-      continue;
-    }
-    created++;
-  }
+  const result = (data ?? {}) as {
+    created?: number;
+    skipped?: number;
+    batches?: number;
+    errors?: string[];
+  };
 
   revalidatePath("/inventory");
-  // Cap the reported errors so the payload stays small.
-  return { ok: true, created, skipped, errors: errors.slice(0, 50) };
+  return {
+    ok: true,
+    created: result.created ?? 0,
+    skipped: result.skipped ?? 0,
+    batches: result.batches ?? 0,
+    errors: result.errors ?? [],
+  };
 }
 
 

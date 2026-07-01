@@ -2024,6 +2024,7 @@ export type Database = {
     Functions: {
       accept_invitation: { Args: { invite_token: string }; Returns: string }
       expire_trials: { Args: never; Returns: undefined }
+      import_products: { Args: { p_branch: string; p_rows: Json }; Returns: Json }
       adjust_batch: {
         Args: { p_batch: string; p_new_quantity: number; p_reason?: string }
         Returns: undefined
