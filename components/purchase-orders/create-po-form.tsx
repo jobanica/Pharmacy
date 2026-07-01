@@ -15,6 +15,90 @@ import { formatCentavos, pesosToCentavos } from "@/lib/money";
 
 type Product = { id: string; name: string };
 type Supplier = { id: string; name: string };
+
+/** Searchable product picker — type to filter, click to select. */
+function ProductCombobox({
+  products,
+  value,
+  onChange,
+}: {
+  products: Product[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
+  const selected = products.find((p) => p.id === value) ?? null;
+
+  // Close when clicking outside.
+  React.useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const matches = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const list = q
+      ? products.filter((p) => p.name.toLowerCase().includes(q))
+      : products;
+    return list.slice(0, 50);
+  }, [products, query]);
+
+  return (
+    <div ref={rootRef} className="relative min-w-[180px] flex-1">
+      <input
+        type="text"
+        value={open ? query : selected?.name ?? ""}
+        placeholder="Search product…"
+        onFocus={() => {
+          setOpen(true);
+          setQuery("");
+        }}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          if (!open) setOpen(true);
+        }}
+        className="h-9 w-full rounded-md border bg-transparent px-3 text-sm outline-none focus:ring-1 focus:ring-primary"
+      />
+      {open ? (
+        <div className="absolute z-50 mt-1 max-h-64 w-full overflow-auto rounded-md border bg-popover shadow-lg">
+          {matches.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">No products found</div>
+          ) : (
+            matches.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onChange(p.id);
+                  setOpen(false);
+                  setQuery("");
+                }}
+                className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent ${
+                  p.id === value ? "bg-accent/50 font-medium" : ""
+                }`}
+              >
+                {p.name}
+              </button>
+            ))
+          )}
+          {query.trim() && products.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase())).length > 50 ? (
+            <div className="px-3 py-1.5 text-xs text-muted-foreground">
+              Showing first 50 — keep typing to narrow.
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 type LowStockItem = {
   product_id: string;
   product_name: string;
@@ -181,18 +265,11 @@ export function CreatePoForm({
           <div className="grid gap-2">
             {lines.map((l, i) => (
               <div key={i} className="flex flex-wrap items-end gap-2">
-                <select
+                <ProductCombobox
+                  products={products}
                   value={l.productId}
-                  onChange={(e) => updateLine(i, { productId: e.target.value })}
-                  className="h-9 min-w-[180px] flex-1 rounded-md border bg-transparent px-3 text-sm"
-                >
-                  <option value="">Select product…</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => updateLine(i, { productId: id })}
+                />
                 <div className="grid gap-1">
                   <span className="text-xs text-muted-foreground">Qty</span>
                   <Input
