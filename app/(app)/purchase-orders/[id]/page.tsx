@@ -41,7 +41,7 @@ export default async function PurchaseOrderDetailPage({
   const { id } = await params;
   const ctx = await requireAppContext();
   const supabase = await createClient();
-  const canManage = can(ctx.role, "manage_catalog");
+  const canManage = can(ctx.role, "use_purchase_orders");
 
   const { data: po } = await supabase
     .from("purchase_orders")

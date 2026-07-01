@@ -48,7 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Prescriptions", href: "/prescriptions", icon: Pill, requires: "create_sale" },
   { label: "Customers", href: "/customers", icon: Star, requires: "create_sale" },
   { label: "Suppliers", href: "/suppliers", icon: Truck, requires: "manage_catalog", requiresPlan: "starter" },
-  { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "manage_catalog", requiresPlan: "starter" },
+  { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "use_purchase_orders", requiresPlan: "starter" },
   { label: "HR & Payroll", href: "/hris", icon: Clock, requires: "manage_members" },
   { label: "Settings", href: "/settings", icon: Settings, requires: "manage_members" },
 ];

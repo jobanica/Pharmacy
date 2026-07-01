@@ -22,7 +22,7 @@ export type CreateResult = { ok: true; id: string } | { error: string };
 
 async function guard(): Promise<{ error: string } | { ctx: AppContext }> {
   const ctx = await requireAppContext();
-  if (!can(ctx.role, "manage_catalog")) {
+  if (!can(ctx.role, "use_purchase_orders")) {
     return { error: "You do not have permission to manage purchase orders" };
   }
   return { ctx };

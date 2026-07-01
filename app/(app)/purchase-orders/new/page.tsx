@@ -10,7 +10,7 @@ import { can } from "@/lib/auth/roles";
 
 export default async function NewPurchaseOrderPage() {
   const ctx = await requireAppContext();
-  if (!can(ctx.role, "manage_catalog")) notFound();
+  if (!can(ctx.role, "use_purchase_orders")) notFound();
   const supabase = await createClient();
 
   const [{ data: products }, { data: suppliers }, { data: lowStock }] = await Promise.all([
