@@ -12,6 +12,7 @@ import { can } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import { manilaBusinessDay, manilaDayRange, isoDaysAgo, formatManila } from "@/lib/date";
 import { expireTrials, getSubscription } from "@/lib/billing/service";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 function enumerateDays(from: string, to: string): string[] {
   const days: string[] = [];
@@ -69,12 +70,22 @@ export default async function DashboardPage({
   // Current inventory value at cost = Σ(on-hand quantity × unit cost) across
   // batches. A live snapshot, not date-ranged; follows the branch filter.
   // Selling price is embedded so owners can also see potential profit.
-  let batchQuery = supabase
-    .from("batches")
-    .select("quantity, cost_centavos, products(default_price_centavos)");
-  if (branch !== "all") batchQuery = batchQuery.eq("branch_id", branch);
-  const { data: batches } = await batchQuery;
-  const inventoryValue = (batches ?? []).reduce(
+  // Page through so "All branches" isn't undercounted (PostgREST caps at 1000
+  // rows, and the combined branch batch count can exceed that).
+  type BatchRow = {
+    quantity: number;
+    cost_centavos: number;
+    products: { default_price_centavos: number } | null;
+  };
+  const batches = await fetchAllRows<BatchRow>((from, to) => {
+    let q = supabase
+      .from("batches")
+      .select("quantity, cost_centavos, products(default_price_centavos)")
+      .range(from, to);
+    if (branch !== "all") q = q.eq("branch_id", branch);
+    return q as unknown as PromiseLike<{ data: BatchRow[] | null }>;
+  });
+  const inventoryValue = batches.reduce(
     (s, b) => s + b.quantity * b.cost_centavos,
     0,
   );
@@ -82,10 +93,8 @@ export default async function DashboardPage({
   // current stock were sold at the product's price. Owner-only.
   const isOwner = ctx.role === "owner";
   const potentialProfit = isOwner
-    ? (batches ?? []).reduce((s, b) => {
-        const price =
-          (b.products as unknown as { default_price_centavos: number } | null)
-            ?.default_price_centavos ?? 0;
+    ? batches.reduce((s, b) => {
+        const price = b.products?.default_price_centavos ?? 0;
         return s + b.quantity * (price - b.cost_centavos);
       }, 0)
     : 0;
