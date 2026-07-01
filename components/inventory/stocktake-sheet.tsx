@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,22 @@ export function StocktakeSheet({
   });
   const [saving, setSaving] = React.useState<Record<string, boolean>>({});
   const [approvePending, startApprove] = React.useTransition();
+  const [query, setQuery] = React.useState("");
+  const [onlyUncounted, setOnlyUncounted] = React.useState(false);
+
+  function isCounted(id: string) {
+    return counts[id] != null && counts[id] !== "";
+  }
+
+  const visibleItems = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return items.filter((it) => {
+      if (onlyUncounted && isCounted(it.id)) return false;
+      if (q && !it.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, query, onlyUncounted, counts]);
 
   async function onBlur(id: string) {
     const val = counts[id];
@@ -70,6 +86,26 @@ export function StocktakeSheet({
         {varianceItems.length > 0 ? ` · ${varianceItems.length} variance${varianceItems.length > 1 ? "s" : ""}` : ""}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search product…"
+            className="h-9 pl-8"
+          />
+        </div>
+        <Button
+          type="button"
+          variant={onlyUncounted ? "default" : "outline"}
+          size="sm"
+          onClick={() => setOnlyUncounted((v) => !v)}
+        >
+          {onlyUncounted ? "Showing uncounted" : "Only uncounted"}
+        </Button>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
@@ -81,7 +117,14 @@ export function StocktakeSheet({
             </tr>
           </thead>
           <tbody>
-            {items.map((it) => {
+            {visibleItems.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">
+                  {onlyUncounted ? "Everything visible has been counted." : "No products match your search."}
+                </td>
+              </tr>
+            ) : null}
+            {visibleItems.map((it) => {
               const raw = counts[it.id];
               const counted = raw != null && raw !== "" ? parseInt(raw) : null;
               const variance = counted != null ? counted - it.systemQty : null;
