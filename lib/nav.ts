@@ -19,6 +19,7 @@ import {
   Timer,
   ArrowLeftRight,
   ClipboardCheck,
+  Printer,
   type LucideIcon,
 } from "lucide-react";
 
@@ -50,5 +51,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Suppliers", href: "/suppliers", icon: Truck, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Purchase Orders", href: "/purchase-orders", icon: ClipboardList, requires: "use_purchase_orders", requiresPlan: "starter" },
   { label: "HR & Payroll", href: "/hris", icon: Clock, requires: "manage_members" },
+  { label: "Printer", href: "/printer", icon: Printer, requires: "create_sale" },
   { label: "Settings", href: "/settings", icon: Settings, requires: "manage_members" },
 ];

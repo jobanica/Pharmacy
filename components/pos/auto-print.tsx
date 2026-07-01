@@ -5,11 +5,15 @@ import { toast } from "sonner";
 
 import type { ReceiptData } from "@/lib/escpos/receipt";
 import type { PrinterType } from "@/lib/branding";
+import { readPrinterPrefs } from "@/lib/printer/prefs";
 
 /**
  * Triggers auto-print once on mount.
  * - printerType "browser": opens window.print() after a short delay
  * - printerType "bluetooth": encodes ESC/POS and streams to the cached BT printer
+ *
+ * Per-device preferences (set on the Printer settings page) override the
+ * org defaults passed in, so each terminal prints its own way.
  */
 export function AutoPrint({
   enabled,
@@ -21,9 +25,12 @@ export function AutoPrint({
   receipt?: ReceiptData;
 }) {
   React.useEffect(() => {
-    if (!enabled) return;
+    const prefs = readPrinterPrefs();
+    const effectiveEnabled = typeof prefs.autoPrint === "boolean" ? prefs.autoPrint : enabled;
+    const effectiveType = prefs.printerType ?? printerType;
+    if (!effectiveEnabled) return;
 
-    if (printerType === "bluetooth" && receipt) {
+    if (effectiveType === "bluetooth" && receipt) {
       let cancelled = false;
       const t = setTimeout(async () => {
         if (cancelled) return;
