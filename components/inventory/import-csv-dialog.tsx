@@ -257,6 +257,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                       <th className="px-2 py-1.5 text-right">Price</th>
                       <th className="px-2 py-1.5 text-right">On hand</th>
                       <th className="px-2 py-1.5">Expiry</th>
+                      <th className="px-2 py-1.5 text-right">Reorder</th>
                       <th className="px-2 py-1.5 text-center">Rx</th>
                     </tr>
                   </thead>
@@ -269,6 +270,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                         <td className="px-2 py-1.5 text-right">{r.price?.toString() || "0"}</td>
                         <td className="px-2 py-1.5 text-right">{r.quantity?.toString() || "—"}</td>
                         <td className="px-2 py-1.5">{r.expiry?.toString() || "—"}</td>
+                        <td className="px-2 py-1.5 text-right">{r.reorderPoint?.toString() || "0"}</td>
                         <td className="px-2 py-1.5 text-center">
                           {["yes", "true", "1", "y"].includes((r.requiresPrescription ?? "").toString().trim().toLowerCase()) ? "✓" : ""}
                         </td>
