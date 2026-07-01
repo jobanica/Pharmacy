@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { requireAppContext, type AppContext } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { pesosToCentavos } from "@/lib/money";
@@ -97,12 +98,15 @@ export async function scanReceipt(dataUrl: string): Promise<ScanResult> {
   if (!outcome.ok) return { error: outcome.error };
 
   const supabase = await createClient();
-  const [{ data: products }, { data: suppliers }] = await Promise.all([
-    supabase.from("products").select("id, name, generic_name"),
+  // Page through every product so matching works for large catalogs (PostgREST
+  // caps a response at 1000 rows — otherwise scanned items past the first 1000
+  // wouldn't match and would be created as duplicates).
+  const [productList, { data: suppliers }] = await Promise.all([
+    fetchAllRows<{ id: string; name: string; generic_name: string | null }>((from, to) =>
+      supabase.from("products").select("id, name, generic_name").range(from, to),
+    ),
     supabase.from("suppliers").select("id, name"),
   ]);
-
-  const productList = products ?? [];
   const byName = new Map(productList.map((p) => [norm(p.name), p]));
 
   function matchProduct(name: string): { id: string; name: string } | null {
