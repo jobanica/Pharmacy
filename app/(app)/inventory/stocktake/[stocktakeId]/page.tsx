@@ -26,26 +26,25 @@ export default async function StocktakeDetailPage({
 
   if (!st) notFound();
 
+  // Embed the product via its foreign key so names come back in one query.
+  // (A separate .in(productIds) lookup breaks on large stocktakes — 1000+ UUIDs
+  // overflow the request URL, so every row fell back to showing the raw id.)
   const { data: rawItems } = await supabase
     .from("stocktake_items")
-    .select("id, product_id, system_qty, counted_qty")
-    .eq("stocktake_id", stocktakeId)
-    .order("product_id");
+    .select("id, product_id, system_qty, counted_qty, products(name, unit)")
+    .eq("stocktake_id", stocktakeId);
 
-  const productIds = (rawItems ?? []).map((i) => i.product_id);
-  const { data: products } = productIds.length
-    ? await supabase.from("products").select("id, name, unit").in("id", productIds)
-    : { data: [] };
-  const productMap = new Map((products ?? []).map((p) => [p.id, p]));
-
-  const items = (rawItems ?? []).map((i) => ({
-    id: i.id,
-    productId: i.product_id,
-    name: productMap.get(i.product_id)?.name ?? i.product_id,
-    unit: productMap.get(i.product_id)?.unit ?? "",
-    systemQty: i.system_qty,
-    countedQty: i.counted_qty,
-  })).sort((a, b) => a.name.localeCompare(b.name));
+  const items = (rawItems ?? []).map((i) => {
+    const product = i.products as unknown as { name: string; unit: string } | null;
+    return {
+      id: i.id,
+      productId: i.product_id,
+      name: product?.name ?? i.product_id,
+      unit: product?.unit ?? "",
+      systemQty: i.system_qty,
+      countedQty: i.counted_qty,
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name));
 
   const approved = st.status === "approved";
   const canApprove = can(ctx.role, "void_sale"); // owners + managers
