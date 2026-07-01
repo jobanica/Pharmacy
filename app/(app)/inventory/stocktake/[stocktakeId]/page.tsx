@@ -29,13 +29,32 @@ export default async function StocktakeDetailPage({
   // Embed the product via its foreign key so names come back in one query.
   // (A separate .in(productIds) lookup breaks on large stocktakes — 1000+ UUIDs
   // overflow the request URL, so every row fell back to showing the raw id.)
-  const { data: rawItems } = await supabase
-    .from("stocktake_items")
-    .select("id, product_id, system_qty, counted_qty, products(name, unit)")
-    .eq("stocktake_id", stocktakeId);
+  //
+  // PostgREST caps a single response at 1000 rows, so page through in chunks to
+  // fetch every item — large pharmacies can have several thousand products.
+  type RawItem = {
+    id: string;
+    product_id: string;
+    system_qty: number;
+    counted_qty: number | null;
+    products: { name: string; unit: string } | null;
+  };
+  const rawItems: RawItem[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data: chunk } = await supabase
+      .from("stocktake_items")
+      .select("id, product_id, system_qty, counted_qty, products(name, unit)")
+      .eq("stocktake_id", stocktakeId)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    const rows = (chunk ?? []) as unknown as RawItem[];
+    rawItems.push(...rows);
+    if (rows.length < PAGE) break;
+  }
 
-  const items = (rawItems ?? []).map((i) => {
-    const product = i.products as unknown as { name: string; unit: string } | null;
+  const items = rawItems.map((i) => {
+    const product = i.products;
     return {
       id: i.id,
       productId: i.product_id,
