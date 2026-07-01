@@ -252,6 +252,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                   <thead className="sticky top-0 bg-muted/80 text-left text-muted-foreground">
                     <tr>
                       <th className="px-2 py-1.5">Name</th>
+                      <th className="px-2 py-1.5">SKU</th>
                       <th className="px-2 py-1.5">Category</th>
                       <th className="px-2 py-1.5 text-right">Cost</th>
                       <th className="px-2 py-1.5 text-right">Price</th>
@@ -265,6 +266,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
                     {preview.map((r, i) => (
                       <tr key={i} className="border-t">
                         <td className="px-2 py-1.5">{r.name?.toString()}</td>
+                        <td className="px-2 py-1.5">{r.sku?.toString() || "—"}</td>
                         <td className="px-2 py-1.5">{r.category?.toString() || "—"}</td>
                         <td className="px-2 py-1.5 text-right">{r.cost?.toString() || "—"}</td>
                         <td className="px-2 py-1.5 text-right">{r.price?.toString() || "0"}</td>
