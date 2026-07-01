@@ -16,6 +16,7 @@ import { formatManila, manilaBusinessDay, manilaDayRange } from "@/lib/date";
 import { readLoyalty } from "@/lib/loyalty/settings";
 import { readTax } from "@/lib/tax/settings";
 import { canUseInventory } from "@/lib/billing/plans";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 
 export default async function PosPage() {
   const ctx = await requireAppContext();
@@ -25,13 +26,17 @@ export default async function PosPage() {
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "branch";
   const { startUtc } = manilaDayRange(manilaBusinessDay());
 
-  const [{ data: products }, { data: onHand }, { data: todays }, { data: recent }, { data: customers }] =
+  const [products, { data: onHand }, { data: todays }, { data: recent }, { data: customers }] =
     await Promise.all([
-      supabase
-        .from("products")
-        .select("id, name, generic_name, sku, barcode, unit, default_price_centavos, requires_prescription")
-        .eq("is_active", true)
-        .order("name"),
+      // Page through so all products are sellable/searchable (PostgREST caps at 1000).
+      fetchAllRows((from, to) =>
+        supabase
+          .from("products")
+          .select("id, name, generic_name, sku, barcode, unit, default_price_centavos, requires_prescription")
+          .eq("is_active", true)
+          .order("name")
+          .range(from, to),
+      ),
       supabase
         .from("v_product_on_hand")
         .select("product_id, on_hand")
