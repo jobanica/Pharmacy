@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Coins, Receipt, Boxes, TrendingUp, type LucideIcon } from "lucide-react";
+import { Coins, Receipt, Boxes, TrendingUp, Warehouse, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { DashboardFilters } from "@/components/dashboard/filters";
@@ -66,6 +66,18 @@ export default async function DashboardPage({
         .in("sale_id", saleIds)
     : { data: [] as never[] };
 
+  // Current inventory value at cost = Σ(on-hand quantity × unit cost) across
+  // batches. A live snapshot, not date-ranged; follows the branch filter.
+  let batchQuery = supabase
+    .from("batches")
+    .select("quantity, cost_centavos");
+  if (branch !== "all") batchQuery = batchQuery.eq("branch_id", branch);
+  const { data: batches } = await batchQuery;
+  const inventoryValue = (batches ?? []).reduce(
+    (s, b) => s + b.quantity * b.cost_centavos,
+    0,
+  );
+
   const revenue = (sales ?? []).reduce((s, r) => s + r.total_centavos, 0);
   const transactions = sales?.length ?? 0;
   const itemsSold = (items ?? []).reduce((s, r) => s + r.quantity, 0);
@@ -110,6 +122,7 @@ export default async function DashboardPage({
     { icon: TrendingUp, label: "Gross Profit", value: formatCentavos(profit), gradient: "from-teal-400 to-cyan-600", sub: `${marginPct.toFixed(0)}% margin` },
     { icon: Receipt, label: "Transactions", value: String(transactions), gradient: "from-violet-500 to-purple-600" },
     { icon: Boxes, label: "Items Sold", value: String(itemsSold), gradient: "from-pink-500 to-rose-500" },
+    { icon: Warehouse, label: "Inventory Value", value: formatCentavos(inventoryValue), gradient: "from-amber-500 to-orange-600", sub: "at cost, on hand" },
   ];
 
   return (
@@ -129,7 +142,7 @@ export default async function DashboardPage({
       ) : null}
 
       {/* Gradient stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map((c) => {
           const Icon = c.icon;
           return (
