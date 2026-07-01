@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Coins, Receipt, Boxes, TrendingUp, Warehouse, type LucideIcon } from "lucide-react";
+import { Coins, Receipt, Boxes, TrendingUp, Warehouse, PiggyBank, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { DashboardFilters } from "@/components/dashboard/filters";
@@ -68,15 +68,27 @@ export default async function DashboardPage({
 
   // Current inventory value at cost = Σ(on-hand quantity × unit cost) across
   // batches. A live snapshot, not date-ranged; follows the branch filter.
+  // Selling price is embedded so owners can also see potential profit.
   let batchQuery = supabase
     .from("batches")
-    .select("quantity, cost_centavos");
+    .select("quantity, cost_centavos, products(default_price_centavos)");
   if (branch !== "all") batchQuery = batchQuery.eq("branch_id", branch);
   const { data: batches } = await batchQuery;
   const inventoryValue = (batches ?? []).reduce(
     (s, b) => s + b.quantity * b.cost_centavos,
     0,
   );
+  // Potential profit = Σ(on-hand quantity × (selling price − unit cost)) if all
+  // current stock were sold at the product's price. Owner-only.
+  const isOwner = ctx.role === "owner";
+  const potentialProfit = isOwner
+    ? (batches ?? []).reduce((s, b) => {
+        const price =
+          (b.products as unknown as { default_price_centavos: number } | null)
+            ?.default_price_centavos ?? 0;
+        return s + b.quantity * (price - b.cost_centavos);
+      }, 0)
+    : 0;
 
   const revenue = (sales ?? []).reduce((s, r) => s + r.total_centavos, 0);
   const transactions = sales?.length ?? 0;
@@ -123,6 +135,9 @@ export default async function DashboardPage({
     { icon: Receipt, label: "Transactions", value: String(transactions), gradient: "from-violet-500 to-purple-600" },
     { icon: Boxes, label: "Items Sold", value: String(itemsSold), gradient: "from-pink-500 to-rose-500" },
     { icon: Warehouse, label: "Inventory Value", value: formatCentavos(inventoryValue), gradient: "from-amber-500 to-orange-600", sub: "at cost, on hand" },
+    ...(isOwner
+      ? [{ icon: PiggyBank, label: "Potential Profit", value: formatCentavos(potentialProfit), gradient: "from-emerald-500 to-green-600", sub: "if all stock sold" } as const]
+      : []),
   ];
 
   return (
@@ -142,7 +157,7 @@ export default async function DashboardPage({
       ) : null}
 
       {/* Gradient stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-3 ${isOwner ? "xl:grid-cols-6" : "xl:grid-cols-5"}`}>
         {cards.map((c) => {
           const Icon = c.icon;
           return (
