@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { requireAppContext, type AppContext } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { pesosToCentavos } from "@/lib/money";
@@ -166,11 +167,18 @@ const importLineSchema = z
     message: "Each line needs a matched product or a name to create one",
   });
 
-const importReceiptSchema = z.object({
-  supplierId: z.string().uuid().optional().or(z.literal("")),
-  newSupplierName: z.string().max(200).optional().or(z.literal("")),
-  lines: z.array(importLineSchema).min(1, "Nothing to import"),
-});
+const importReceiptSchema = z
+  .object({
+    supplierId: z.string().uuid().optional().or(z.literal("")),
+    newSupplierName: z.string().max(200).optional().or(z.literal("")),
+    // The scanned receipt image (data URL), saved for record-keeping.
+    imageDataUrl: z.string().optional().or(z.literal("")),
+    lines: z.array(importLineSchema).min(1, "Nothing to import"),
+  })
+  .refine(
+    (v) => (v.supplierId && v.supplierId.length > 0) || (v.newSupplierName ?? "").trim().length > 0,
+    { message: "A supplier is required before importing a receipt" },
+  );
 export type ImportReceiptInput = z.input<typeof importReceiptSchema>;
 
 export type ImportResult = { ok: true; received: number } | { error: string };
@@ -212,6 +220,12 @@ export async function importReceipt(input: ImportReceiptInput): Promise<ImportRe
     }
   }
 
+  // A supplier is mandatory so expiring stock can always be traced to who
+  // supplied it (also enforced client-side and by the schema).
+  if (!supplierId) {
+    return { error: "A supplier is required before importing a receipt" };
+  }
+
   // 2. Receive each line, creating products as needed.
   let received = 0;
   for (const line of d.lines) {
@@ -248,8 +262,40 @@ export async function importReceipt(input: ImportReceiptInput): Promise<ImportRe
     received += 1;
   }
 
+  // 3. Save the scanned receipt image + a record for future reference.
+  const totalCost = d.lines.reduce(
+    (s, l) => s + pesosToCentavos(l.unitCost) * Number(l.quantity),
+    0,
+  );
+  const dataUrl = d.imageDataUrl ?? "";
+  let imagePath: string | null = null;
+  if (dataUrl.startsWith("data:image/")) {
+    const mime = dataUrl.slice(5, dataUrl.indexOf(";"));
+    const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+    const bytes = Buffer.from(dataUrl.split(",")[1] ?? "", "base64");
+    if (bytes.length > 0 && bytes.length <= 8_000_000) {
+      const path = `${orgId}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}.${ext}`;
+      const service = createServiceClient();
+      const { error: upErr } = await service.storage
+        .from("receipts")
+        .upload(path, bytes, { contentType: mime, upsert: false });
+      if (!upErr) imagePath = path;
+    }
+  }
+  // Record the scan even when no image was provided (keeps an audit trail).
+  await supabase.from("receipt_scans").insert({
+    organization_id: orgId,
+    branch_id: g.ctx.activeBranchId,
+    supplier_id: supplierId,
+    image_path: imagePath ?? "",
+    item_count: received,
+    total_cost_centavos: totalCost,
+    created_by: g.ctx.user.id,
+  });
+
   revalidatePath("/inventory");
   revalidatePath("/suppliers");
   revalidatePath("/alerts");
+  revalidatePath("/purchase-orders/receipts");
   return { ok: true, received };
 }

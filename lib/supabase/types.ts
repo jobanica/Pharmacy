@@ -1653,6 +1653,50 @@ export type Database = {
           },
         ]
       }
+      receipt_scans: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          image_path: string
+          item_count: number
+          organization_id: string
+          supplier_id: string | null
+          total_cost_centavos: number
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path: string
+          item_count?: number
+          organization_id: string
+          supplier_id?: string | null
+          total_cost_centavos?: number
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_path?: string
+          item_count?: number
+          organization_id?: string
+          supplier_id?: string | null
+          total_cost_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_scans_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null

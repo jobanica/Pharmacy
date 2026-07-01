@@ -99,6 +99,7 @@ export function ScanReceiptDialog({
   const [reviewing, setReviewing] = React.useState(false);
   const [supplierId, setSupplierId] = React.useState<string>(NEW);
   const [newSupplierName, setNewSupplierName] = React.useState("");
+  const [imageDataUrl, setImageDataUrl] = React.useState("");
 
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -107,6 +108,7 @@ export function ScanReceiptDialog({
     setReviewing(false);
     setSupplierId(NEW);
     setNewSupplierName("");
+    setImageDataUrl("");
     setScanning(false);
     if (fileRef.current) fileRef.current.value = "";
   }
@@ -117,6 +119,7 @@ export function ScanReceiptDialog({
     setScanning(true);
     try {
       const dataUrl = await fileToResizedDataUrl(file);
+      setImageDataUrl(dataUrl);
       const res = await scanReceipt(dataUrl);
       if ("error" in res) {
         toast.error(res.error);
@@ -152,11 +155,18 @@ export function ScanReceiptDialog({
     setLines((prev) => prev.filter((l) => l.key !== key));
   }
 
+  const supplierMissing = supplierId === NEW && !newSupplierName.trim();
+
   function onConfirm() {
+    if (supplierMissing) {
+      toast.error("Select or enter a supplier before importing.");
+      return;
+    }
     startImport(async () => {
       const res = await importReceipt({
         supplierId: supplierId === NEW ? "" : supplierId,
         newSupplierName: supplierId === NEW ? newSupplierName : "",
+        imageDataUrl,
         lines: lines.map((l) => ({
           productId: l.productId === NEW ? "" : l.productId,
           newProductName: l.productId === NEW ? l.newProductName : "",
@@ -237,11 +247,15 @@ export function ScanReceiptDialog({
         ) : (
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Supplier</Label>
+              <Label>
+                Supplier <span className="text-destructive">*</span>
+              </Label>
               <select
                 value={supplierId}
                 onChange={(e) => setSupplierId(e.target.value)}
-                className="h-9 rounded-md border bg-transparent px-3 text-sm"
+                className={`h-9 rounded-md border bg-transparent px-3 text-sm ${
+                  supplierMissing ? "border-destructive" : ""
+                }`}
               >
                 <option value={NEW}>+ New supplier…</option>
                 {suppliers.map((s) => (
@@ -254,9 +268,13 @@ export function ScanReceiptDialog({
                 <Input
                   value={newSupplierName}
                   onChange={(e) => setNewSupplierName(e.target.value)}
-                  placeholder="Supplier name (optional)"
+                  placeholder="Supplier name (required)"
+                  className={supplierMissing ? "border-destructive" : ""}
                 />
               ) : null}
+              <p className="text-xs text-muted-foreground">
+                Required — so expiring stock can always be traced to its supplier.
+              </p>
             </div>
 
             <div className="grid gap-3">
@@ -360,7 +378,7 @@ export function ScanReceiptDialog({
               <Button
                 type="button"
                 onClick={onConfirm}
-                disabled={importing || lines.length === 0}
+                disabled={importing || lines.length === 0 || supplierMissing}
               >
                 {importing ? (
                   <Loader2 className="size-4 animate-spin" />

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, FileImage } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
@@ -56,10 +56,16 @@ export default async function PurchaseOrdersPage() {
         title="Purchase Orders"
         description="Order stock from suppliers and receive it into inventory."
         action={
-          <Button render={<Link href="/purchase-orders/new" />}>
-            <Plus className="size-4" />
-            New PO
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" render={<Link href="/purchase-orders/receipts" />}>
+              <FileImage className="size-4" />
+              Scanned receipts
+            </Button>
+            <Button render={<Link href="/purchase-orders/new" />}>
+              <Plus className="size-4" />
+              New PO
+            </Button>
+          </div>
         }
       />
       <div className="rounded-lg border">
