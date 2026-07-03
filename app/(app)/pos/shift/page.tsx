@@ -40,7 +40,19 @@ export default async function ShiftPage() {
         .eq("sales.status", "completed")
     : { data: null };
 
-  const liveCash = cashPayments?.reduce((s, p) => s + p.amount_centavos, 0) ?? 0;
+  // Change handed back reduces what's actually in the drawer.
+  const { data: changeRows } = openShift
+    ? await supabase
+        .from("sales")
+        .select("change_centavos")
+        .eq("shift_id", openShift.id)
+        .eq("status", "completed")
+    : { data: null };
+
+  const cashTendered = cashPayments?.reduce((s, p) => s + p.amount_centavos, 0) ?? 0;
+  const changeGiven = changeRows?.reduce((s, r) => s + (r.change_centavos ?? 0), 0) ?? 0;
+  // Cash kept in the drawer = tendered − change returned.
+  const liveCash = cashTendered - changeGiven;
   const expectedCash = openShift ? openShift.opening_cash_centavos + liveCash : 0;
 
   const brand = readBrand(ctx.organization.settings);

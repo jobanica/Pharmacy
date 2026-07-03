@@ -61,19 +61,13 @@ export async function closeShift(
   if (error) return { error: error.message };
 
   // Fetch summary for the closed shift to return to the client for printing.
-  const [{ data: shift }, { data: cashPayments }, { data: branch }, { data: profile }] =
+  const [{ data: shift }, { data: branch }, { data: profile }] =
     await Promise.all([
       supabase
         .from("cashier_shifts")
-        .select("opened_at, closed_at, sales_count, gross_centavos, net_centavos, opening_cash_centavos, closing_cash_centavos, over_short_centavos, cashier_id, branch_id")
+        .select("opened_at, closed_at, sales_count, gross_centavos, net_centavos, opening_cash_centavos, closing_cash_centavos, cash_collected_centavos, over_short_centavos, cashier_id, branch_id")
         .eq("id", shiftId)
         .maybeSingle(),
-      supabase
-        .from("sale_payments")
-        .select("amount_centavos, sales!inner(shift_id, status)")
-        .eq("method", "cash")
-        .eq("sales.shift_id", shiftId)
-        .eq("sales.status", "completed"),
       supabase.from("branches").select("name").eq("id", ctx.activeBranchId).maybeSingle(),
       supabase.from("profiles").select("full_name").eq("id", ctx.user.id).maybeSingle(),
     ]);
@@ -83,7 +77,8 @@ export async function closeShift(
   const grossC = (shift?.gross_centavos ?? 0);
   const netC = (shift?.net_centavos ?? 0);
   const discountC = grossC - netC;
-  const cashCollected = (cashPayments ?? []).reduce((s, p) => s + p.amount_centavos, 0);
+  // The RPC already stored the change-adjusted cash kept.
+  const cashCollected = shift?.cash_collected_centavos ?? 0;
 
   revalidatePath("/pos/shift");
   return {
