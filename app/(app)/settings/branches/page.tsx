@@ -48,12 +48,27 @@ export default async function SettingsBranchesPage() {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("branches")
-    .select("id, name, address, phone, is_active")
-    .order("created_at", { ascending: true });
+  const [{ data }, { data: saleBranches }, { data: batchBranches }] =
+    await Promise.all([
+      supabase
+        .from("branches")
+        .select("id, name, address, phone, is_active")
+        .order("created_at", { ascending: true }),
+      supabase.from("sales").select("branch_id"),
+      supabase.from("batches").select("branch_id"),
+    ]);
 
-  const branches = (data ?? []) as BranchRow[];
+  // Which branches already carry sales or stock records — used to warn before
+  // a delete that would permanently erase them.
+  const withHistory = new Set<string>([
+    ...(saleBranches ?? []).map((r) => r.branch_id),
+    ...(batchBranches ?? []).map((r) => r.branch_id),
+  ]);
+
+  const branches: BranchRow[] = (data ?? []).map((b) => ({
+    ...b,
+    hasHistory: withHistory.has(b.id),
+  }));
 
   return <BranchesManager branches={branches} />;
 }

@@ -128,9 +128,10 @@ export async function setBranchActive(
 const deleteSchema = z.object({ id: z.string().uuid() });
 
 /**
- * Permanently delete a branch. Only allowed when the branch has no sales or
- * stock history (deleting one with history would destroy records) — otherwise
- * the owner should archive it instead. Never delete the last branch.
+ * Permanently delete a branch. This is a HARD delete: every FK to the branch is
+ * `on delete cascade`, so all of the branch's sales and stock history is erased
+ * along with it. The UI warns the owner about that loss first, but — by design —
+ * the owner may still go through with it. The org must always keep ≥1 branch.
  */
 export async function deleteBranch(
   input: z.input<typeof deleteSchema>,
@@ -162,33 +163,14 @@ export async function deleteBranch(
     return { error: "You must keep at least one branch." };
   }
 
-  // Block deletion when the branch has real history (sales or stock batches).
-  const [{ count: saleCount }, { count: batchCount }] = await Promise.all([
-    db.from("sales").select("id", { count: "exact", head: true }).eq("branch_id", id),
-    db.from("batches").select("id", { count: "exact", head: true }).eq("branch_id", id),
-  ]);
-  if ((saleCount ?? 0) > 0 || (batchCount ?? 0) > 0) {
-    return {
-      error:
-        "This branch has sales or stock history and can't be deleted. Archive it instead to keep the records.",
-    };
-  }
-
-  // Clear soft references so the delete doesn't trip a foreign key.
+  // Clear soft (set-null) references first; the cascade FKs handle sales,
+  // batches, stock movements, purchase orders, etc. automatically.
   await db.from("memberships").update({ default_branch_id: null }).eq("default_branch_id", id);
   await db.from("invitations").update({ branch_id: null }).eq("branch_id", id);
   await db.from("employees").update({ branch_id: null }).eq("branch_id", id);
 
   const { error } = await db.from("branches").delete().eq("id", id);
-  if (error) {
-    if (error.code === "23503") {
-      return {
-        error:
-          "This branch is still referenced by other records. Archive it instead.",
-      };
-    }
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
   revalidatePath("/settings/branches");
   revalidatePath("/", "layout");

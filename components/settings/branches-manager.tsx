@@ -28,6 +28,8 @@ export type BranchRow = {
   address: string | null;
   phone: string | null;
   is_active: boolean;
+  /** True when the branch already has sales or stock records. */
+  hasHistory: boolean;
 };
 
 export function BranchesManager({ branches }: { branches: BranchRow[] }) {
@@ -166,13 +168,10 @@ function BranchItem({
   }
 
   function remove() {
-    if (
-      !window.confirm(
-        `Delete "${branch.name}" permanently? This can't be undone. Branches with sales or stock can't be deleted — archive them instead.`,
-      )
-    ) {
-      return;
-    }
+    const message = branch.hasHistory
+      ? `"${branch.name}" has sales and stock history.\n\nDeleting it will PERMANENTLY erase all of that branch's sales and stock records. This cannot be undone.\n\nTip: "Archive" instead keeps the records but hides the branch.\n\nDelete anyway?`
+      : `Delete "${branch.name}" permanently? This can't be undone.`;
+    if (!window.confirm(message)) return;
     start(async () => {
       const res = await deleteBranch({ id: branch.id });
       if ("error" in res) toast.error(res.error);
@@ -222,6 +221,11 @@ function BranchItem({
             {!branch.is_active ? (
               <Badge variant="outline" className="text-muted-foreground">
                 Archived
+              </Badge>
+            ) : null}
+            {branch.hasHistory ? (
+              <Badge variant="outline" className="text-amber-600 dark:text-amber-500">
+                Has records
               </Badge>
             ) : null}
           </div>
