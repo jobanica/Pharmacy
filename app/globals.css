@@ -176,8 +176,33 @@
     @apply font-sans;
   }
 }
-/* Print: show only the receipt, hide the app shell. */
+/* Print: show only the receipt/summary, hide the app shell. */
 @media print {
+  /* The app shell is a 100vh, overflow-hidden grid with a scrollable <main>.
+     Left as-is, Chrome clips the printable area to that single viewport and
+     an inline receipt/summary prints as a blank page. Neutralize the height
+     and overflow so the revealed print area can paint on the page. */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+    background-image: none !important;
+  }
+  .app-shell > *,
+  .app-shell main {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
   body * {
     visibility: hidden;
   }
@@ -189,19 +214,14 @@
   .shift-summary-print * {
     visibility: visible;
   }
-  .receipt-print {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    border: none;
-  }
+  .receipt-print,
   .print-area,
   .shift-summary-print {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+    border: none;
     color: #000;
   }
 }
