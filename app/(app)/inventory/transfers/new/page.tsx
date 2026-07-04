@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireAppContext } from "@/lib/auth/session";
 import { can } from "@/lib/auth/roles";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { TransferForm } from "@/components/inventory/transfer-form";
 
 export default async function NewTransferPage() {
@@ -13,23 +14,30 @@ export default async function NewTransferPage() {
 
   const supabase = await createClient();
 
-  const [{ data: branches }, { data: products }, { data: onHand }] = await Promise.all([
+  const [{ data: branches }, products, onHand] = await Promise.all([
     supabase
       .from("branches")
       .select("id, name")
       .eq("organization_id", ctx.organization.id)
       .neq("id", ctx.activeBranchId)
       .order("name"),
-    supabase
-      .from("products")
-      .select("id, name, unit")
-      .eq("organization_id", ctx.organization.id)
-      .eq("is_active", true)
-      .order("name"),
-    supabase
-      .from("v_product_on_hand")
-      .select("product_id, on_hand")
-      .eq("branch_id", ctx.activeBranchId),
+    // Page through so all products load (PostgREST caps a response at 1000).
+    fetchAllRows((from, to) =>
+      supabase
+        .from("products")
+        .select("id, name, unit")
+        .eq("organization_id", ctx.organization.id)
+        .eq("is_active", true)
+        .order("name")
+        .range(from, to),
+    ),
+    fetchAllRows<{ product_id: string | null; on_hand: number | null }>((from, to) =>
+      supabase
+        .from("v_product_on_hand")
+        .select("product_id, on_hand")
+        .eq("branch_id", ctx.activeBranchId)
+        .range(from, to),
+    ),
   ]);
 
   if (!branches?.length) {
@@ -45,8 +53,8 @@ export default async function NewTransferPage() {
     );
   }
 
-  const onHandMap = new Map((onHand ?? []).map((r) => [r.product_id, r.on_hand ?? 0]));
-  const sellable = (products ?? [])
+  const onHandMap = new Map(onHand.map((r) => [r.product_id, r.on_hand ?? 0]));
+  const sellable = products
     .map((p) => ({ ...p, on_hand: onHandMap.get(p.id) ?? 0 }))
     .filter((p) => p.on_hand > 0);
 
