@@ -16,10 +16,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
-import { ROLE_LABELS, type Role } from "@/lib/auth/roles";
+import { ROLE_LABELS, can, type Role } from "@/lib/auth/roles";
+import { RemoveMemberButton } from "@/components/settings/remove-member-button";
 
 export default async function SettingsMembersPage() {
   const ctx = await requireAppContext();
+  const canManage = can(ctx.role, "manage_members");
   const supabase = await createClient();
 
   const { data: memberships } = await supabase
@@ -45,25 +47,42 @@ export default async function SettingsMembersPage() {
               <TableHead>Name</TableHead>
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
+              {canManage ? <TableHead className="text-right">Actions</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(memberships ?? []).map((m) => (
-              <TableRow key={m.user_id}>
-                <TableCell className="font-medium">
-                  {nameById.get(m.user_id) || "—"}
-                  {m.user_id === ctx.user.id ? (
-                    <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+            {(memberships ?? []).map((m) => {
+              const isSelf = m.user_id === ctx.user.id;
+              // Only an owner may remove another owner.
+              const canRemove =
+                canManage && !isSelf && (m.role !== "owner" || ctx.role === "owner");
+              return (
+                <TableRow key={m.user_id}>
+                  <TableCell className="font-medium">
+                    {nameById.get(m.user_id) || "—"}
+                    {isSelf ? (
+                      <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell>{ROLE_LABELS[m.role as Role]}</TableCell>
+                  <TableCell>
+                    <Badge variant={m.status === "active" ? "secondary" : "outline"}>
+                      {m.status}
+                    </Badge>
+                  </TableCell>
+                  {canManage ? (
+                    <TableCell className="text-right">
+                      {canRemove ? (
+                        <RemoveMemberButton
+                          userId={m.user_id}
+                          name={nameById.get(m.user_id) || ""}
+                        />
+                      ) : null}
+                    </TableCell>
                   ) : null}
-                </TableCell>
-                <TableCell>{ROLE_LABELS[m.role as Role]}</TableCell>
-                <TableCell>
-                  <Badge variant={m.status === "active" ? "secondary" : "outline"}>
-                    {m.status}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </CardContent>

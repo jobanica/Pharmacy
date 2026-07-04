@@ -19,6 +19,7 @@ import {
   createBranch,
   updateBranch,
   setBranchActive,
+  deleteBranch,
 } from "@/lib/branches/actions";
 
 export type BranchRow = {
@@ -164,6 +165,21 @@ function BranchItem({
     });
   }
 
+  function remove() {
+    if (
+      !window.confirm(
+        `Delete "${branch.name}" permanently? This can't be undone. Branches with sales or stock can't be deleted — archive them instead.`,
+      )
+    ) {
+      return;
+    }
+    start(async () => {
+      const res = await deleteBranch({ id: branch.id });
+      if ("error" in res) toast.error(res.error);
+      else toast.success("Branch deleted");
+    });
+  }
+
   if (editing) {
     return (
       <div className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-3">
@@ -232,6 +248,15 @@ function BranchItem({
           disabled={pending}
         >
           {branch.is_active ? "Archive" : "Restore"}
+        </Button>
+        <Button
+          onClick={remove}
+          variant="ghost"
+          size="sm"
+          className="text-destructive"
+          disabled={pending}
+        >
+          Delete
         </Button>
       </div>
     </div>
