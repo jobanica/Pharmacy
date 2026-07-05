@@ -128,7 +128,7 @@ export async function setBranchActive(
 const deleteSchema = z.object({ id: z.string().uuid() });
 
 /**
- * Permanently delete a branch. This is a HARD delete: every FK to the branch is
+ * Permanently delete a branch. This is a HARD delete: most FKs to the branch are
  * `on delete cascade`, so all of the branch's sales and stock history is erased
  * along with it. The UI warns the owner about that loss first, but — by design —
  * the owner may still go through with it. The org must always keep ≥1 branch.
@@ -163,14 +163,24 @@ export async function deleteBranch(
     return { error: "You must keep at least one branch." };
   }
 
-  // Clear soft (set-null) references first; the cascade FKs handle sales,
-  // batches, stock movements, purchase orders, etc. automatically.
+  // Clear soft references and remove rows whose FK would otherwise block the
+  // delete (stock_transfers is ON DELETE RESTRICT; invitations has no cascade).
+  // Everything else (sales, batches, shifts, POs, stocktakes…) cascades.
   await db.from("memberships").update({ default_branch_id: null }).eq("default_branch_id", id);
   await db.from("invitations").update({ branch_id: null }).eq("branch_id", id);
   await db.from("employees").update({ branch_id: null }).eq("branch_id", id);
+  await db.from("stock_transfers").delete().or(`from_branch_id.eq.${id},to_branch_id.eq.${id}`);
 
   const { error } = await db.from("branches").delete().eq("id", id);
-  if (error) return { error: error.message };
+  if (error) {
+    if (error.code === "23503") {
+      return {
+        error:
+          "This branch is still referenced by other records and couldn't be fully deleted.",
+      };
+    }
+    return { error: error.message };
+  }
 
   revalidatePath("/settings/branches");
   revalidatePath("/", "layout");

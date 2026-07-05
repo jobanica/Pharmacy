@@ -169,7 +169,7 @@ function BranchItem({
 
   function remove() {
     const message = branch.hasHistory
-      ? `"${branch.name}" has sales and stock history.\n\nDeleting it will PERMANENTLY erase all of that branch's sales and stock records. This cannot be undone.\n\nTip: "Archive" instead keeps the records but hides the branch.\n\nDelete anyway?`
+      ? `"${branch.name}" has sales and stock history.\n\nDeleting it will PERMANENTLY erase all of that branch's sales, stock, shifts, purchase orders, stocktakes, and transfers. This cannot be undone.\n\nTip: "Archive" instead keeps the records but hides the branch.\n\nDelete anyway?`
       : `Delete "${branch.name}" permanently? This can't be undone.`;
     if (!window.confirm(message)) return;
     start(async () => {
