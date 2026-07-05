@@ -8,6 +8,7 @@ import { formatManila } from "@/lib/date/index";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StartStocktakeButton } from "@/components/inventory/start-stocktake-button";
+import { DiscardStocktakeButton } from "@/components/inventory/discard-stocktake-button";
 
 export default async function StocktakeListPage() {
   const ctx = await requireAppContext();
@@ -20,16 +21,24 @@ export default async function StocktakeListPage() {
     .order("created_at", { ascending: false })
     .limit(30);
 
-  const hasDraft = (stocktakes ?? []).some((s) => s.status === "draft");
+  const draft = (stocktakes ?? []).find((s) => s.status === "draft");
+  const hasDraft = Boolean(draft);
+  const canManage = can(ctx.role, "manage_catalog");
 
   return (
     <div className="space-y-5 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Stocktake</h1>
-        {can(ctx.role, "manage_catalog") && !hasDraft ? (
+        {canManage && !hasDraft ? (
           <StartStocktakeButton />
-        ) : hasDraft ? (
-          <p className="text-sm text-amber-600">A draft stocktake is in progress.</p>
+        ) : canManage && draft ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-amber-600">A draft stocktake is in progress.</span>
+            <Button variant="outline" size="sm" render={<Link href={`/inventory/stocktake/${draft.id}`} />}>
+              Open
+            </Button>
+            <DiscardStocktakeButton stocktakeId={draft.id} />
+          </div>
         ) : null}
       </div>
 
