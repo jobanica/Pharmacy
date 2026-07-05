@@ -26,7 +26,7 @@ export default async function PosPage() {
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "branch";
   const { startUtc } = manilaDayRange(manilaBusinessDay());
 
-  const [products, { data: onHand }, { data: todays }, { data: recent }, { data: customers }] =
+  const [products, onHand, { data: todays }, { data: recent }, { data: customers }] =
     await Promise.all([
       // Page through so all products are sellable/searchable (PostgREST caps at 1000).
       fetchAllRows((from, to) =>
@@ -38,10 +38,15 @@ export default async function PosPage() {
           .order("id") // unique tiebreaker so paging never repeats/skips rows
           .range(from, to),
       ),
-      supabase
-        .from("v_product_on_hand")
-        .select("product_id, on_hand")
-        .eq("branch_id", ctx.activeBranchId),
+      // Page through on-hand too, or products past the first 1000 show 0 stock.
+      fetchAllRows<{ product_id: string | null; on_hand: number | null }>((from, to) =>
+        supabase
+          .from("v_product_on_hand")
+          .select("product_id, on_hand")
+          .eq("branch_id", ctx.activeBranchId)
+          .order("product_id")
+          .range(from, to),
+      ),
       supabase
         .from("sales")
         .select("total_centavos")

@@ -28,7 +28,7 @@ export default async function InventoryPage() {
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ??
     "the active branch";
 
-  const [products, { data: categories }, { data: onHand }, { data: suppliers }, { data: batches }] =
+  const [products, { data: categories }, onHand, { data: suppliers }, batches] =
     await Promise.all([
       // Page through so all products load (PostgREST caps a response at 1000).
       fetchAllRows((from, to) =>
@@ -42,19 +42,28 @@ export default async function InventoryPage() {
           .range(from, to),
       ),
       supabase.from("categories").select("id, name").order("name"),
-      supabase
-        .from("v_product_on_hand")
-        .select("product_id, on_hand")
-        .eq("branch_id", ctx.activeBranchId),
+      // Page through on-hand too, or products past the first 1000 show 0 stock.
+      fetchAllRows<{ product_id: string | null; on_hand: number | null }>((from, to) =>
+        supabase
+          .from("v_product_on_hand")
+          .select("product_id, on_hand")
+          .eq("branch_id", ctx.activeBranchId)
+          .order("product_id")
+          .range(from, to),
+      ),
       supabase.from("suppliers").select("id, name").order("name"),
       // Batches in stock at this branch, soonest expiry first (nulls last) so the
       // first one we see per product is the next to expire (FEFO).
-      supabase
-        .from("batches")
-        .select("product_id, batch_number, expiry_date")
-        .eq("branch_id", ctx.activeBranchId)
-        .gt("quantity", 0)
-        .order("expiry_date", { ascending: true, nullsFirst: false }),
+      fetchAllRows<{ product_id: string; batch_number: string | null; expiry_date: string | null }>((from, to) =>
+        supabase
+          .from("batches")
+          .select("product_id, batch_number, expiry_date")
+          .eq("branch_id", ctx.activeBranchId)
+          .gt("quantity", 0)
+          .order("expiry_date", { ascending: true, nullsFirst: false })
+          .order("product_id")
+          .range(from, to),
+      ),
     ]);
 
   const onHandById = new Map(
