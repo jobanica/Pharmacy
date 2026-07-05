@@ -115,6 +115,22 @@ export async function setProductActive(
   return { ok: true };
 }
 
+export type MergeResult = { ok: true; merged: number } | { error: string };
+
+/** Merge duplicate products (same name) into one record. Owner/manager only. */
+export async function mergeDuplicateProducts(): Promise<MergeResult> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("merge_duplicate_products");
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  const merged = (data as { merged?: number } | null)?.merged ?? 0;
+  return { ok: true, merged };
+}
+
 export type ImportRow = {
   name?: string;
   genericName?: string;

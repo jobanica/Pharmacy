@@ -81,6 +81,7 @@ export default async function DashboardPage({
     let q = supabase
       .from("batches")
       .select("quantity, cost_centavos, products(default_price_centavos)")
+      .order("id") // unique tiebreaker so paging never repeats/skips rows
       .range(from, to);
     if (branch !== "all") q = q.eq("branch_id", branch);
     return q as unknown as PromiseLike<{ data: BatchRow[] | null }>;

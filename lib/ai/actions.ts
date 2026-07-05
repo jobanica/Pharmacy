@@ -103,7 +103,7 @@ export async function scanReceipt(dataUrl: string): Promise<ScanResult> {
   // wouldn't match and would be created as duplicates).
   const [productList, { data: suppliers }] = await Promise.all([
     fetchAllRows<{ id: string; name: string; generic_name: string | null }>((from, to) =>
-      supabase.from("products").select("id, name, generic_name").range(from, to),
+      supabase.from("products").select("id, name, generic_name").order("id").range(from, to),
     ),
     supabase.from("suppliers").select("id, name"),
   ]);

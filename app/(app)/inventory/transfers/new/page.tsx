@@ -29,6 +29,7 @@ export default async function NewTransferPage() {
         .eq("organization_id", ctx.organization.id)
         .eq("is_active", true)
         .order("name")
+        .order("id") // unique tiebreaker so paging never repeats/skips rows
         .range(from, to),
     ),
     fetchAllRows<{ product_id: string | null; on_hand: number | null }>((from, to) =>
@@ -36,6 +37,7 @@ export default async function NewTransferPage() {
         .from("v_product_on_hand")
         .select("product_id, on_hand")
         .eq("branch_id", ctx.activeBranchId)
+        .order("product_id")
         .range(from, to),
     ),
   ]);

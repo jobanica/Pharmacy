@@ -17,7 +17,13 @@ export default async function NewPurchaseOrderPage() {
   const [products, { data: suppliers }, { data: lowStock }] = await Promise.all([
     // Page through so all products are searchable (PostgREST caps at 1000).
     fetchAllRows((from, to) =>
-      supabase.from("products").select("id, name").eq("is_active", true).order("name").range(from, to),
+      supabase
+        .from("products")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name")
+        .order("id") // unique tiebreaker so paging never repeats/skips rows
+        .range(from, to),
     ),
     supabase.from("suppliers").select("id, name").order("name"),
     supabase

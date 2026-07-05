@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { ProductDialog, type ProductRow } from "./product-dialog";
 import { ScanReceiptDialog } from "./scan-receipt-dialog";
 import { ImportCsvDialog } from "./import-csv-dialog";
-import { setProductActive } from "@/lib/catalog/actions";
+import { setProductActive, mergeDuplicateProducts } from "@/lib/catalog/actions";
 import { formatCentavos } from "@/lib/money";
 import { daysUntil } from "@/lib/date";
 
@@ -231,10 +231,27 @@ export function ProductsTable({
   branchName: string;
 }) {
   const [categoryFilter, setCategoryFilter] = React.useState<string>("");
+  const [merging, startMerge] = React.useTransition();
   const columns = React.useMemo(
     () => buildColumns(categories, canManage),
     [categories, canManage],
   );
+
+  function mergeDuplicates() {
+    if (
+      !window.confirm(
+        "Merge duplicate products with the same name into one record? Stock, sales and history from the duplicates are kept and consolidated. This can't be undone.",
+      )
+    ) {
+      return;
+    }
+    startMerge(async () => {
+      const res = await mergeDuplicateProducts();
+      if ("error" in res) toast.error(res.error);
+      else if (res.merged === 0) toast.success("No duplicate products found.");
+      else toast.success(`Merged ${res.merged} duplicate product${res.merged !== 1 ? "s" : ""}.`);
+    });
+  }
 
   const data = React.useMemo(
     () =>
@@ -278,6 +295,11 @@ export function ProductsTable({
                 </Button>
               }
             />
+          ) : null}
+          {canManage ? (
+            <Button variant="outline" onClick={mergeDuplicates} disabled={merging}>
+              Merge duplicates
+            </Button>
           ) : null}
           {canManage ? (
             <ScanReceiptDialog

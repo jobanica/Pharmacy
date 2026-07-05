@@ -35,6 +35,7 @@ export default async function PosPage() {
           .select("id, name, generic_name, sku, barcode, unit, default_price_centavos, requires_prescription")
           .eq("is_active", true)
           .order("name")
+          .order("id") // unique tiebreaker so paging never repeats/skips rows
           .range(from, to),
       ),
       supabase
