@@ -17,8 +17,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { scanReceipt } from "@/lib/ai/actions";
-import { receivePoItem, updatePoItemCost } from "@/lib/purchase-orders/actions";
+import { receivePoItem, updatePoItemCost, addAndReceivePoItem } from "@/lib/purchase-orders/actions";
 import { formatCentavos, centavosToPesos } from "@/lib/money";
+
+type ExtraLine = {
+  key: string;
+  productName: string;
+  matchProductId: string | null;
+  qty: string;
+  cost: string;
+  batch: string;
+  expiry: string;
+  added: boolean;
+};
 
 export type ReceiveItem = {
   id: string;
@@ -78,7 +89,7 @@ export function ScanReceiveDialog({
   const [open, setOpen] = React.useState(false);
   const [scanning, setScanning] = React.useState(false);
   const [savingId, setSavingId] = React.useState<string | null>(null);
-  const [unmatched, setUnmatched] = React.useState<string[]>([]);
+  const [extras, setExtras] = React.useState<ExtraLine[]>([]);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   const [lines, setLines] = React.useState<Record<string, LineState>>(() =>
@@ -113,7 +124,7 @@ export function ScanReceiveDialog({
         return;
       }
       // Match each scanned line to a PO item by product id, then by name.
-      const leftover: string[] = [];
+      const leftover: ExtraLine[] = [];
       const patches: Record<string, Partial<LineState>> = {};
       for (const sl of res.lines) {
         const byId = sl.matchProductId
@@ -127,7 +138,17 @@ export function ScanReceiveDialog({
             return a === b || a.includes(b) || b.includes(a);
           });
         if (!byName) {
-          leftover.push(sl.productName);
+          // On the delivery but not on this PO — offer to add it anyway.
+          leftover.push({
+            key: `extra-${leftover.length}-${sl.productName}`,
+            productName: sl.productName,
+            matchProductId: sl.matchProductId,
+            qty: sl.quantity > 0 ? String(sl.quantity) : "1",
+            cost: sl.unitCost > 0 ? String(sl.unitCost) : "",
+            batch: sl.batchNumber ?? "",
+            expiry: sl.expiryDate ?? "",
+            added: false,
+          });
           continue;
         }
         patches[byName.id] = {
@@ -143,10 +164,10 @@ export function ScanReceiveDialog({
         for (const [id, p] of Object.entries(patches)) next[id] = { ...next[id], ...p };
         return next;
       });
-      setUnmatched(leftover);
+      setExtras(leftover);
       const matchedCount = Object.keys(patches).length;
       toast.success(
-        `Matched ${matchedCount} item(s) from the receipt — review and add each.`,
+        `Matched ${matchedCount} PO item(s)${leftover.length ? `, ${leftover.length} extra not on the PO` : ""} — review and add.`,
       );
     } catch {
       toast.error("Couldn't process that image.");
@@ -210,6 +231,35 @@ export function ScanReceiveDialog({
       toast.success(`Added ${count} item(s) to inventory`);
       router.refresh();
     }
+  }
+
+  function updateExtra(key: string, patch: Partial<ExtraLine>) {
+    setExtras((prev) => prev.map((e) => (e.key === key ? { ...e, ...patch } : e)));
+  }
+
+  function addExtra(ex: ExtraLine) {
+    if (!(Number(ex.qty) > 0)) {
+      toast.error("Enter a quantity");
+      return;
+    }
+    setSavingId(ex.key);
+    addAndReceivePoItem(poId, {
+      productId: ex.matchProductId ?? "",
+      newProductName: ex.matchProductId ? "" : ex.productName,
+      quantityReceived: ex.qty,
+      unitCost: ex.cost || "0",
+      batchNumber: ex.batch,
+      expiryDate: ex.expiry,
+    }).then((res) => {
+      setSavingId(null);
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      updateExtra(ex.key, { added: true });
+      toast.success(`Added ${ex.productName} to inventory`);
+      router.refresh();
+    });
   }
 
   const matchedPending = items.filter((it) => lines[it.id].matched && !lines[it.id].added).length;
@@ -377,10 +427,93 @@ export function ScanReceiveDialog({
           </Button>
         ) : null}
 
-        {unmatched.length > 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Not on this PO (ignored): {unmatched.join(", ")}
-          </p>
+        {extras.length > 0 ? (
+          <div className="grid gap-2">
+            <p className="text-sm font-medium text-amber-600 dark:text-amber-500">
+              Extra items on the receipt (not on this PO)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Add them to receive the stock too — they&apos;ll be attributed to this PO&apos;s supplier.
+            </p>
+            {extras.map((ex) => (
+              <div
+                key={ex.key}
+                className={
+                  "rounded-lg border p-3 " +
+                  (ex.added ? "border-emerald-500/50 bg-emerald-500/5" : "border-amber-500/40")
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium">
+                    {ex.productName}
+                    {ex.matchProductId ? null : (
+                      <span className="ml-2 text-xs text-muted-foreground">(new product)</span>
+                    )}
+                  </div>
+                  {ex.added ? (
+                    <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-500">
+                      <Check className="size-4" />
+                      Received
+                    </span>
+                  ) : null}
+                </div>
+                {!ex.added ? (
+                  <div className="mt-2 flex flex-wrap items-end gap-2">
+                    <div className="grid gap-1">
+                      <Label className="text-xs">Qty received</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={ex.qty}
+                        onChange={(e) => updateExtra(ex.key, { qty: e.target.value })}
+                        className="w-24"
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-xs">Batch #</Label>
+                      <Input
+                        value={ex.batch}
+                        onChange={(e) => updateExtra(ex.key, { batch: e.target.value })}
+                        className="w-32"
+                        placeholder="optional"
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-xs">Expiry</Label>
+                      <Input
+                        type="date"
+                        value={ex.expiry}
+                        onChange={(e) => updateExtra(ex.key, { expiry: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-xs">Unit cost ₱</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={ex.cost}
+                        onChange={(e) => updateExtra(ex.key, { cost: e.target.value })}
+                        className="w-28"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => addExtra(ex)}
+                      disabled={savingId !== null || !(Number(ex.qty) > 0)}
+                    >
+                      {savingId === ex.key ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Plus className="size-4" />
+                      )}
+                      Add
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
         ) : null}
       </DialogContent>
     </Dialog>

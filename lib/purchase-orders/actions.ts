@@ -229,6 +229,95 @@ export async function receivePoItem(
   return { ok: true };
 }
 
+const extraItemSchema = z.object({
+  productId: z.string().uuid().optional().or(z.literal("")),
+  newProductName: z.string().max(200).optional().or(z.literal("")),
+  newGenericName: z.string().max(200).optional().or(z.literal("")),
+  quantityReceived: z.coerce.number().int().positive("Enter a quantity"),
+  unitCost: z.coerce.number().min(0).default(0),
+  batchNumber: z.string().max(64).optional().or(z.literal("")),
+  expiryDate: z.string().optional().or(z.literal("")),
+}).refine(
+  (l) => (l.productId && l.productId.length > 0) || (l.newProductName ?? "").trim().length > 0,
+  { message: "An extra item needs a product or a name to create one" },
+);
+export type ExtraItemInput = z.input<typeof extraItemSchema>;
+
+/**
+ * Receive an item that was on the delivery but NOT on the PO: add it to the PO
+ * as a line (creating the product if needed), then receive it into the PO's
+ * branch with the PO's supplier attached.
+ */
+export async function addAndReceivePoItem(
+  poId: string,
+  input: ExtraItemInput,
+): Promise<Result> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+  const parsed = extraItemSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+
+  const supabase = await createClient();
+  const orgId = g.ctx.organization.id;
+
+  // Resolve the product: existing id wins; else find-or-create by name.
+  let productId = d.productId && d.productId.length > 0 ? d.productId : null;
+  if (!productId) {
+    const name = (d.newProductName ?? "").trim();
+    const { data: existing } = await supabase
+      .from("products")
+      .select("id")
+      .eq("organization_id", orgId)
+      .ilike("name", name)
+      .maybeSingle();
+    if (existing) {
+      productId = existing.id;
+    } else {
+      const { data: created, error: prodErr } = await supabase
+        .from("products")
+        .insert({
+          organization_id: orgId,
+          name,
+          generic_name: (d.newGenericName ?? "").trim() || null,
+        })
+        .select("id")
+        .single();
+      if (prodErr) return { error: `Couldn't create "${name}": ${prodErr.message}` };
+      productId = created.id;
+    }
+  }
+
+  // Add the line to the PO (ordered = received, since it was delivered).
+  const cost = pesosToCentavos(d.unitCost);
+  const { data: item, error: itemErr } = await supabase
+    .from("purchase_order_items")
+    .insert({
+      organization_id: orgId,
+      purchase_order_id: poId,
+      product_id: productId,
+      quantity_ordered: d.quantityReceived,
+      unit_cost_centavos: cost,
+    })
+    .select("id")
+    .single();
+  if (itemErr) return { error: itemErr.message };
+
+  // Receive it into inventory (branch + supplier come from the PO).
+  const { error: rpcErr } = await supabase.rpc("receive_po_item", {
+    p_item: item.id,
+    p_quantity: d.quantityReceived,
+    ...(d.batchNumber?.trim() ? { p_batch_number: d.batchNumber.trim() } : {}),
+    ...(d.expiryDate ? { p_expiry: d.expiryDate } : {}),
+  });
+  if (rpcErr) return { error: rpcErr.message };
+
+  revalidatePath(`/purchase-orders/${poId}`);
+  revalidatePath("/inventory");
+  revalidatePath("/alerts");
+  return { ok: true };
+}
+
 export async function receivePurchaseOrder(
   poId: string,
   input: ReceivePoInput,
