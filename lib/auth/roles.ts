@@ -23,6 +23,7 @@ export type Capability =
   | "manage_catalog" // products, suppliers
   | "manage_stock" // adjust stock / receive batches
   | "use_purchase_orders" // create/receive purchase orders (incl. cashier)
+  | "use_transfers" // view + receive stock transfers (incl. cashier)
   | "create_sale" // POS
   | "void_sale" // void / refund
   | "view_reports"; // dashboard & reports
@@ -33,6 +34,7 @@ const MATRIX: Record<Capability, Role[]> = {
   manage_catalog: ["owner", "manager", "pharmacist"],
   manage_stock: ["owner", "manager", "pharmacist"],
   use_purchase_orders: ["owner", "manager", "pharmacist", "cashier"],
+  use_transfers: ["owner", "manager", "pharmacist", "cashier"],
   create_sale: ["owner", "manager", "pharmacist", "cashier"],
   void_sale: ["owner", "manager"],
   view_reports: ["owner", "manager", "pharmacist"],

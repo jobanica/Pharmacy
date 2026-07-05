@@ -33,7 +33,7 @@ export async function createTransfer(
 
 export async function receiveTransfer(transferId: string): Promise<ReceiveResult> {
   const ctx = await requireAppContext();
-  if (!can(ctx.role, "manage_catalog")) return { error: "Permission denied" };
+  if (!can(ctx.role, "use_transfers")) return { error: "Permission denied" };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("receive_transfer", { p_transfer: transferId });

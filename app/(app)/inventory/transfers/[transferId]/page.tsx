@@ -55,7 +55,7 @@ export default async function TransferDetailPage({
   ]);
 
   const isDestination = ctx.activeBranchId === xfer.to_branch_id;
-  const canReceive = isDestination && xfer.status === "in_transit" && can(ctx.role, "manage_catalog");
+  const canReceive = isDestination && xfer.status === "in_transit" && can(ctx.role, "use_transfers");
 
   const totalUnits = (items ?? []).reduce((s, i) => s + i.quantity, 0);
   const totalCost = (items ?? []).reduce((s, i) => s + i.quantity * i.unit_cost_centavos, 0);
