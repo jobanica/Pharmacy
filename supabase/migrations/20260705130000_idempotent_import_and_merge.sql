@@ -133,8 +133,11 @@ begin
 end;
 $function$;
 
--- 2) Merge duplicate products (same name) into the oldest record, repointing all
---    references, then deleting the duplicates. Owner/manager only. Returns count.
+-- 2) Merge duplicate products (same name) into the oldest record. Sales/PO/return/
+--    transfer history is repointed to the canonical product so nothing is lost,
+--    but STOCK IS NOT SUMMED — only the canonical product's own batches are kept
+--    (each duplicate's opening stock is discarded), so a double import doesn't
+--    double the on-hand. Owner/manager only. Returns the count merged.
 CREATE OR REPLACE FUNCTION public.merge_duplicate_products()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -169,14 +172,17 @@ begin
       select id from public.products
       where organization_id = v_org and lower(trim(name)) = r.key and id <> v_canon
     loop
-      update public.batches            set product_id = v_canon where product_id = d.id;
-      update public.inventory_movements set product_id = v_canon where product_id = d.id;
+      -- Preserve transactional history by repointing it to the canonical product.
       update public.sale_items          set product_id = v_canon where product_id = d.id;
       update public.purchase_order_items set product_id = v_canon where product_id = d.id;
       update public.order_items         set product_id = v_canon where product_id = d.id;
       update public.sale_return_items   set product_id = v_canon where product_id = d.id;
       update public.stock_transfer_items set product_id = v_canon where product_id = d.id;
-      -- stocktake_items has a unique(stocktake_id, product_id); drop the dup rows.
+
+      -- Discard the duplicate's stock (don't sum): remove its movements, batches
+      -- and stocktake snapshot rows. The canonical product keeps its own stock.
+      delete from public.inventory_movements where product_id = d.id;
+      delete from public.batches where product_id = d.id;
       delete from public.stocktake_items where product_id = d.id;
 
       delete from public.products where id = d.id;

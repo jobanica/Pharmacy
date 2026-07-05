@@ -240,7 +240,7 @@ export function ProductsTable({
   function mergeDuplicates() {
     if (
       !window.confirm(
-        "Merge duplicate products with the same name into one record? Stock, sales and history from the duplicates are kept and consolidated. This can't be undone.",
+        "Merge duplicate products with the same name into one record?\n\nSales and history are preserved, but only the ORIGINAL product's stock is kept — each duplicate's stock is discarded (so a double import won't double your on-hand). This can't be undone.",
       )
     ) {
       return;
