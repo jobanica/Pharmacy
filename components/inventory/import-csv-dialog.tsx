@@ -130,7 +130,7 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
   const [rows, setRows] = React.useState<ImportRow[]>([]);
   const [fileName, setFileName] = React.useState("");
   const [importing, startImport] = React.useTransition();
-  const [report, setReport] = React.useState<{ created: number; skipped: number; batches: number; errors: string[] } | null>(null);
+  const [report, setReport] = React.useState<{ created: number; matched: number; skipped: number; batches: number; errors: string[] } | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   function reset() {
@@ -183,12 +183,14 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
         toast.error(res.error);
         return;
       }
-      setReport({ created: res.created, skipped: res.skipped, batches: res.batches, errors: res.errors });
-      if (res.created > 0) {
-        toast.success(`Imported ${res.created} product${res.created !== 1 ? "s" : ""}.`);
+      setReport({ created: res.created, matched: res.matched, skipped: res.skipped, batches: res.batches, errors: res.errors });
+      if (res.created > 0 || res.matched > 0 || res.batches > 0) {
+        toast.success(
+          `Imported: ${res.created} new, ${res.matched} existing, ${res.batches} with stock.`,
+        );
         router.refresh();
       } else {
-        toast.error("No products were imported. Check the errors below.");
+        toast.error("Nothing was imported. Check the errors below.");
       }
     });
   }
@@ -288,8 +290,11 @@ export function ImportCsvDialog({ trigger }: { trigger: React.ReactNode }) {
             <div className="grid gap-2 rounded-lg border p-3 text-sm">
               <p>
                 <span className="font-medium text-emerald-600 dark:text-emerald-500">
-                  {report.created} imported
+                  {report.created} new product{report.created !== 1 ? "s" : ""}
                 </span>
+                {report.matched > 0 ? (
+                  <span className="text-muted-foreground"> · {report.matched} existing reused</span>
+                ) : null}
                 {report.batches > 0 ? (
                   <span className="text-muted-foreground"> · {report.batches} with opening stock</span>
                 ) : null}

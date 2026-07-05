@@ -1,6 +1,8 @@
--- 1) Make CSV import idempotent: skip rows whose product name already exists
---    (case-insensitive) in the org, so re-importing the same file can't create
---    duplicate product records.
+-- 1) Import CSV without creating duplicate products: products are org-wide, but
+--    stock is per-branch. If a product name already exists it is REUSED (matched)
+--    rather than duplicated, and the opening-stock batch is still added to the
+--    branch being imported into — so the same catalog can be imported to each
+--    branch to seed that branch's stock.
 CREATE OR REPLACE FUNCTION public.import_products(p_branch uuid, p_rows jsonb)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -17,6 +19,7 @@ declare
   v_cost      integer;
   v_expiry    date;
   v_created   integer := 0;
+  v_matched   integer := 0;
   v_skipped   integer := 0;
   v_batches   integer := 0;
   v_errors    text[] := array[]::text[];
@@ -44,18 +47,6 @@ begin
       continue;
     end if;
 
-    -- Skip products that already exist (idempotent re-import).
-    if exists (
-      select 1 from public.products
-      where organization_id = v_org and lower(name) = lower(v_name)
-    ) then
-      v_skipped := v_skipped + 1;
-      if array_length(v_errors, 1) is null or array_length(v_errors, 1) < 50 then
-        v_errors := array_append(v_errors, 'Row ' || v_idx || ' (' || v_name || '): already exists — skipped');
-      end if;
-      continue;
-    end if;
-
     v_cat_id := null;
     v_cat_name := trim(coalesce(v_row->>'category', ''));
     if v_cat_name <> '' then
@@ -70,33 +61,44 @@ begin
       end if;
     end if;
 
-    begin
-      insert into public.products (
-        organization_id, category_id, name, generic_name, sku, barcode,
-        unit, requires_prescription, reorder_point, default_price_centavos, is_active
-      )
-      values (
-        v_org, v_cat_id, v_name,
-        nullif(trim(coalesce(v_row->>'generic_name', '')), ''),
-        nullif(trim(coalesce(v_row->>'sku', '')), ''),
-        nullif(trim(coalesce(v_row->>'barcode', '')), ''),
-        coalesce(nullif(trim(coalesce(v_row->>'unit', '')), ''), 'piece'),
-        coalesce((v_row->>'requires_prescription')::boolean, false),
-        coalesce((v_row->>'reorder_point')::integer, 0),
-        coalesce((v_row->>'price_centavos')::integer, 0),
-        true
-      )
-      returning id into v_product;
-    exception when others then
-      v_skipped := v_skipped + 1;
-      if array_length(v_errors, 1) is null or array_length(v_errors, 1) < 50 then
-        v_errors := array_append(v_errors, 'Row ' || v_idx || ' (' || v_name || '): ' || SQLERRM);
-      end if;
-      continue;
-    end;
+    -- Reuse an existing product (don't create a duplicate); else create it.
+    select id into v_product
+    from public.products
+    where organization_id = v_org and lower(name) = lower(v_name)
+    order by created_at asc
+    limit 1;
 
-    v_created := v_created + 1;
+    if v_product is null then
+      begin
+        insert into public.products (
+          organization_id, category_id, name, generic_name, sku, barcode,
+          unit, requires_prescription, reorder_point, default_price_centavos, is_active
+        )
+        values (
+          v_org, v_cat_id, v_name,
+          nullif(trim(coalesce(v_row->>'generic_name', '')), ''),
+          nullif(trim(coalesce(v_row->>'sku', '')), ''),
+          nullif(trim(coalesce(v_row->>'barcode', '')), ''),
+          coalesce(nullif(trim(coalesce(v_row->>'unit', '')), ''), 'piece'),
+          coalesce((v_row->>'requires_prescription')::boolean, false),
+          coalesce((v_row->>'reorder_point')::integer, 0),
+          coalesce((v_row->>'price_centavos')::integer, 0),
+          true
+        )
+        returning id into v_product;
+      exception when others then
+        v_skipped := v_skipped + 1;
+        if array_length(v_errors, 1) is null or array_length(v_errors, 1) < 50 then
+          v_errors := array_append(v_errors, 'Row ' || v_idx || ' (' || v_name || '): ' || SQLERRM);
+        end if;
+        continue;
+      end;
+      v_created := v_created + 1;
+    else
+      v_matched := v_matched + 1;
+    end if;
 
+    -- Opening stock batch for THIS branch.
     v_qty := coalesce((v_row->>'quantity')::integer, 0);
     if v_qty > 0 then
       v_cost := coalesce((v_row->>'cost_centavos')::integer, 0);
@@ -126,6 +128,7 @@ begin
 
   return jsonb_build_object(
     'created', v_created,
+    'matched', v_matched,
     'skipped', v_skipped,
     'batches', v_batches,
     'errors', to_jsonb(v_errors)

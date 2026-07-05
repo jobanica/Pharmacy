@@ -147,7 +147,7 @@ export type ImportRow = {
 };
 
 export type ImportResult =
-  | { ok: true; created: number; skipped: number; batches: number; errors: string[] }
+  | { ok: true; created: number; matched: number; skipped: number; batches: number; errors: string[] }
   | { error: string };
 
 function toBool(v: string | boolean | undefined): boolean {
@@ -250,6 +250,7 @@ export async function importProductsCsv(rows: ImportRow[]): Promise<ImportResult
 
   const result = (data ?? {}) as {
     created?: number;
+    matched?: number;
     skipped?: number;
     batches?: number;
     errors?: string[];
@@ -259,6 +260,7 @@ export async function importProductsCsv(rows: ImportRow[]): Promise<ImportResult
   return {
     ok: true,
     created: result.created ?? 0,
+    matched: result.matched ?? 0,
     skipped: result.skipped ?? 0,
     batches: result.batches ?? 0,
     errors: result.errors ?? [],
