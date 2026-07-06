@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Send, Ban, PackageCheck } from "lucide-react";
+import { Plus, Trash2, Send, Ban, PackageCheck, Undo2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -23,6 +23,7 @@ import {
   removePoItem,
   setPoStatus,
   receivePurchaseOrder,
+  reversePoReceiving,
 } from "@/lib/purchase-orders/actions";
 import { formatCentavos } from "@/lib/money";
 
@@ -90,6 +91,34 @@ export function HeaderEditor({
         </div>
       </div>
     </div>
+  );
+}
+
+export function ReverseReceivingButton({ poId }: { poId: string }) {
+  const router = useRouter();
+  const [pending, start] = React.useTransition();
+  function reverse() {
+    if (
+      !window.confirm(
+        "Reverse ALL stock received for this purchase order? Use this if the wrong receipt was scanned.\n\nThe received quantities are removed from inventory and the PO goes back to “sent” so it can be received again. This can't be undone.",
+      )
+    ) {
+      return;
+    }
+    start(async () => {
+      const res = await reversePoReceiving(poId);
+      if ("error" in res) toast.error(res.error);
+      else {
+        toast.success(`Reversed ${res.reversedUnits} unit(s). You can receive again.`);
+        router.refresh();
+      }
+    });
+  }
+  return (
+    <Button variant="outline" className="text-destructive" onClick={reverse} disabled={pending}>
+      {pending ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
+      Reverse receiving
+    </Button>
   );
 }
 

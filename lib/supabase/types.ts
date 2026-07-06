@@ -2070,6 +2070,7 @@ export type Database = {
       expire_trials: { Args: never; Returns: undefined }
       import_products: { Args: { p_branch: string; p_rows: Json }; Returns: Json }
       merge_duplicate_products: { Args: never; Returns: Json }
+      reverse_po_receiving: { Args: { p_po: string }; Returns: Json }
       adjust_batch: {
         Args: { p_batch: string; p_new_quantity: number; p_reason?: string }
         Returns: undefined

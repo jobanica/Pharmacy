@@ -26,6 +26,7 @@ import {
   RemoveItemButton,
   StatusButton,
   ReceiveDialog,
+  ReverseReceivingButton,
 } from "@/components/purchase-orders/po-controls";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -76,6 +77,7 @@ export default async function PurchaseOrderDetailPage({
     lineTotal: it.quantity_ordered * it.unit_cost_centavos,
   }));
   const total = rows.reduce((s, r) => s + r.lineTotal, 0);
+  const hasReceived = rows.some((r) => r.quantity_received > 0);
   const supplierName = (po as { suppliers: { name: string } | null }).suppliers?.name ?? "—";
   const branchName = (po as { branches: { name: string } | null }).branches?.name ?? "—";
 
@@ -131,6 +133,7 @@ export default async function PurchaseOrderDetailPage({
                   />
                 </>
               ) : null}
+              {hasReceived ? <ReverseReceivingButton poId={po.id} /> : null}
               </>
             ) : null}
           </div>

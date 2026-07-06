@@ -318,6 +318,24 @@ export async function addAndReceivePoItem(
   return { ok: true };
 }
 
+export type ReverseResult = { ok: true; reversedUnits: number } | { error: string };
+
+/** Reverse all stock received against a PO (undo a wrong scan). Resets to 'sent'. */
+export async function reversePoReceiving(poId: string): Promise<ReverseResult> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("reverse_po_receiving", { p_po: poId });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/purchase-orders/${poId}`);
+  revalidatePath("/inventory");
+  revalidatePath("/alerts");
+  const reversedUnits = (data as { reversed_units?: number } | null)?.reversed_units ?? 0;
+  return { ok: true, reversedUnits };
+}
+
 export async function receivePurchaseOrder(
   poId: string,
   input: ReceivePoInput,
