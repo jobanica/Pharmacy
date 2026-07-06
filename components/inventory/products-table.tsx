@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { type ColumnDef } from "@tanstack/react-table";
 import { useRouter } from "next/navigation";
-import { Pencil, Plus, Sparkles, ArrowUpDown, FileSpreadsheet } from "lucide-react";
+import { Pencil, Plus, Sparkles, ArrowUpDown, FileSpreadsheet, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { DataTable } from "@/components/data-table/data-table";
@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { ProductDialog, type ProductRow } from "./product-dialog";
 import { ScanReceiptDialog } from "./scan-receipt-dialog";
 import { ImportCsvDialog } from "./import-csv-dialog";
-import { setProductActive, mergeDuplicateProducts } from "@/lib/catalog/actions";
+import { setProductActive, mergeDuplicateProducts, deleteProduct } from "@/lib/catalog/actions";
 import { formatCentavos } from "@/lib/money";
 import { daysUntil } from "@/lib/date";
 
@@ -63,6 +63,39 @@ function ActiveToggle({ product }: { product: ProductWithCategory }) {
         })
       }
     />
+  );
+}
+
+function DeleteProductButton({ product }: { product: ProductWithCategory }) {
+  const router = useRouter();
+  const [pending, startTransition] = React.useTransition();
+  function onDelete() {
+    if (
+      !window.confirm(
+        `Delete "${product.name}" permanently? This can't be undone.\n\nProducts with sales or order history can't be deleted — turn them inactive instead.`,
+      )
+    ) {
+      return;
+    }
+    startTransition(async () => {
+      const res = await deleteProduct(product.id);
+      if ("error" in res) toast.error(res.error);
+      else {
+        toast.success("Product deleted");
+        router.refresh();
+      }
+    });
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="text-destructive"
+      disabled={pending}
+      onClick={onDelete}
+    >
+      <Trash2 className="size-4" />
+    </Button>
   );
 }
 
@@ -199,15 +232,18 @@ function buildColumns(
       id: "actions",
       header: "",
       cell: ({ row }) => (
-        <ProductDialog
-          categories={categories}
-          product={row.original}
-          trigger={
-            <Button variant="ghost" size="sm">
-              <Pencil className="size-4" />
-            </Button>
-          }
-        />
+        <div className="flex items-center justify-end gap-1">
+          <ProductDialog
+            categories={categories}
+            product={row.original}
+            trigger={
+              <Button variant="ghost" size="sm">
+                <Pencil className="size-4" />
+              </Button>
+            }
+          />
+          <DeleteProductButton product={row.original} />
+        </div>
       ),
     });
   }

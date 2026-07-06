@@ -268,6 +268,47 @@ export async function importProductsCsv(rows: ImportRow[]): Promise<ImportResult
 }
 
 
+/**
+ * Permanently delete a product. Blocked when it has transaction history
+ * (sales, purchase orders, returns, transfers) so records aren't destroyed —
+ * deactivate it instead in that case. Batches, movements and stocktake rows are
+ * removed with it.
+ */
+export async function deleteProduct(id: string): Promise<Result> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+
+  const supabase = await createClient();
+
+  // Refuse if the product appears in any historical record.
+  const [sale, po, ret, xfer] = await Promise.all([
+    supabase.from("sale_items").select("id", { count: "exact", head: true }).eq("product_id", id),
+    supabase.from("purchase_order_items").select("id", { count: "exact", head: true }).eq("product_id", id),
+    supabase.from("sale_return_items").select("id", { count: "exact", head: true }).eq("product_id", id),
+    supabase.from("stock_transfer_items").select("id", { count: "exact", head: true }).eq("product_id", id),
+  ]);
+  if ((sale.count ?? 0) > 0 || (po.count ?? 0) > 0 || (ret.count ?? 0) > 0 || (xfer.count ?? 0) > 0) {
+    return {
+      error:
+        "This product has sales or order history and can't be deleted. Turn it inactive instead to hide it.",
+    };
+  }
+
+  // stocktake_items is ON DELETE RESTRICT; clear those snapshot rows first.
+  await supabase.from("stocktake_items").delete().eq("product_id", id);
+
+  const { error } = await supabase.from("products").delete().eq("id", id);
+  if (error) {
+    if (error.code === "23503") {
+      return { error: "This product is still referenced elsewhere. Turn it inactive instead." };
+    }
+    return { error: error.message };
+  }
+
+  revalidatePath("/inventory");
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // Categories
 // ---------------------------------------------------------------------------
