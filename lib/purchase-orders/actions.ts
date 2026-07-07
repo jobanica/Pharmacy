@@ -182,6 +182,31 @@ const receivePoItemSchema = z.object({
 });
 export type ReceivePoItemInput = z.input<typeof receivePoItemSchema>;
 
+/** Update a draft PO line's ordered quantity and unit cost. */
+export async function updatePoItem(
+  itemId: string,
+  poId: string,
+  quantityOrdered: string | number,
+  costPesos: string | number,
+): Promise<Result> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+
+  const qty = Math.trunc(Number(quantityOrdered));
+  if (!Number.isFinite(qty) || qty < 1) return { error: "Quantity must be at least 1" };
+  const cents = pesosToCentavos(costPesos);
+  if (!Number.isFinite(cents) || cents < 0) return { error: "Invalid cost" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("purchase_order_items")
+    .update({ quantity_ordered: qty, unit_cost_centavos: cents })
+    .eq("id", itemId);
+  if (error) return { error: error.message };
+  revalidatePath(`/purchase-orders/${poId}`);
+  return { ok: true };
+}
+
 /** Update a PO line's unit cost (e.g. when the receipt differs from the order). */
 export async function updatePoItemCost(
   itemId: string,

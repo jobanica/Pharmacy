@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Send, Ban, PackageCheck, Undo2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Send, Ban, PackageCheck, Undo2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -21,11 +21,12 @@ import {
   updatePoHeader,
   addPoItem,
   removePoItem,
+  updatePoItem,
   setPoStatus,
   receivePurchaseOrder,
   reversePoReceiving,
 } from "@/lib/purchase-orders/actions";
-import { formatCentavos } from "@/lib/money";
+import { formatCentavos, centavosToPesos } from "@/lib/money";
 
 type Supplier = { id: string; name: string };
 type Product = { id: string; name: string };
@@ -118,6 +119,123 @@ export function ReverseReceivingButton({ poId }: { poId: string }) {
     <Button variant="outline" className="text-destructive" onClick={reverse} disabled={pending}>
       {pending ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
       Reverse receiving
+    </Button>
+  );
+}
+
+export type PoItem = {
+  id: string;
+  name: string;
+  quantity_ordered: number;
+  quantity_received: number;
+  unit_cost_centavos: number;
+};
+
+/** An editable draft-PO line: change ordered qty and unit cost inline. */
+export function EditablePoItemRow({ poId, item }: { poId: string; item: PoItem }) {
+  const router = useRouter();
+  const [qty, setQty] = React.useState(String(item.quantity_ordered));
+  const [cost, setCost] = React.useState(String(centavosToPesos(item.unit_cost_centavos)));
+  const [pending, start] = React.useTransition();
+
+  function save() {
+    const nextQty = String(Math.trunc(Number(qty)) || 0);
+    if (
+      Number(nextQty) === item.quantity_ordered &&
+      Number(cost) === centavosToPesos(item.unit_cost_centavos)
+    ) {
+      return; // nothing changed
+    }
+    start(async () => {
+      const res = await updatePoItem(item.id, poId, qty, cost || "0");
+      if ("error" in res) toast.error(res.error);
+      else router.refresh();
+    });
+  }
+
+  const lineTotal = (Number(qty) || 0) * Math.round((Number(cost) || 0) * 100);
+
+  return (
+    <tr className="border-t">
+      <td className="px-3 py-2 font-medium">{item.name}</td>
+      <td className="px-3 py-2">
+        <Input
+          type="number"
+          min="1"
+          value={qty}
+          onChange={(e) => setQty(e.target.value)}
+          onBlur={save}
+          className="h-8 w-20"
+        />
+      </td>
+      <td className="px-3 py-2">{item.quantity_received}</td>
+      <td className="px-3 py-2">
+        <Input
+          type="number"
+          min="0"
+          step="0.01"
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
+          onBlur={save}
+          className="h-8 w-28"
+        />
+      </td>
+      <td className="px-3 py-2">{formatCentavos(lineTotal)}</td>
+      <td className="px-3 py-2 text-right">
+        <span className="inline-flex items-center gap-1">
+          {pending ? <Loader2 className="size-3.5 animate-spin text-muted-foreground" /> : null}
+          <RemoveItemButton itemId={item.id} poId={poId} />
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+/** Download the PO's line items as a CSV file (client-side). */
+export function DownloadPoCsvButton({
+  poNumber,
+  supplier,
+  branch,
+  items,
+}: {
+  poNumber: string;
+  supplier: string;
+  branch: string;
+  items: PoItem[];
+}) {
+  function download() {
+    const esc = (v: string | number) => {
+      const s = String(v);
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ["product", "ordered", "received", "unit_cost", "line_total"];
+    const rows = items.map((it) => [
+      it.name,
+      it.quantity_ordered,
+      it.quantity_received,
+      centavosToPesos(it.unit_cost_centavos).toFixed(2),
+      (it.quantity_ordered * centavosToPesos(it.unit_cost_centavos)).toFixed(2),
+    ]);
+    const meta = [
+      ["PO", poNumber],
+      ["Supplier", supplier],
+      ["Branch", branch],
+      [],
+    ];
+    const csv =
+      [...meta, header, ...rows].map((r) => r.map(esc).join(",")).join("\n") + "\n";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${poNumber}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  return (
+    <Button variant="outline" onClick={download}>
+      <Download className="size-4" />
+      Download CSV
     </Button>
   );
 }

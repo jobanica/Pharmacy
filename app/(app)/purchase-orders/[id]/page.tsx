@@ -23,10 +23,11 @@ import { aiReceiptEnabled } from "@/lib/ai/receipt";
 import {
   HeaderEditor,
   AddItemForm,
-  RemoveItemButton,
   StatusButton,
   ReceiveDialog,
   ReverseReceivingButton,
+  EditablePoItemRow,
+  DownloadPoCsvButton,
 } from "@/components/purchase-orders/po-controls";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
@@ -98,6 +99,18 @@ export default async function PurchaseOrderDetailPage({
           </h1>
           <div className="flex gap-2">
             <PrintButton />
+            <DownloadPoCsvButton
+              poNumber={po.po_number}
+              supplier={supplierName}
+              branch={branchName}
+              items={rows.map((r) => ({
+                id: r.id,
+                name: r.name,
+                quantity_ordered: r.quantity_ordered,
+                quantity_received: r.quantity_received,
+                unit_cost_centavos: r.unit_cost_centavos,
+              }))}
+            />
             {canManage ? (
               <>
                 {isDraft ? (
@@ -187,20 +200,29 @@ export default async function PurchaseOrderDetailPage({
             </TableHeader>
             <TableBody>
               {rows.length > 0 ? (
-                rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell>{r.quantity_ordered}</TableCell>
-                    <TableCell>{r.quantity_received}</TableCell>
-                    <TableCell>{formatCentavos(r.unit_cost_centavos)}</TableCell>
-                    <TableCell>{formatCentavos(r.lineTotal)}</TableCell>
-                    {isDraft && canManage ? (
-                      <TableCell className="text-right">
-                        <RemoveItemButton itemId={r.id} poId={po.id} />
-                      </TableCell>
-                    ) : null}
-                  </TableRow>
-                ))
+                rows.map((r) =>
+                  isDraft && canManage ? (
+                    <EditablePoItemRow
+                      key={r.id}
+                      poId={po.id}
+                      item={{
+                        id: r.id,
+                        name: r.name,
+                        quantity_ordered: r.quantity_ordered,
+                        quantity_received: r.quantity_received,
+                        unit_cost_centavos: r.unit_cost_centavos,
+                      }}
+                    />
+                  ) : (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.name}</TableCell>
+                      <TableCell>{r.quantity_ordered}</TableCell>
+                      <TableCell>{r.quantity_received}</TableCell>
+                      <TableCell>{formatCentavos(r.unit_cost_centavos)}</TableCell>
+                      <TableCell>{formatCentavos(r.lineTotal)}</TableCell>
+                    </TableRow>
+                  ),
+                )
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-16 text-center text-muted-foreground">
