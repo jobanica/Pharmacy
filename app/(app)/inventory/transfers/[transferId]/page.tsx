@@ -9,6 +9,7 @@ import { formatManila } from "@/lib/date/index";
 import { formatCentavos } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { ReceiveTransferButton } from "@/components/inventory/receive-transfer-button";
+import { TransferActions, type TransferCsvRow } from "@/components/inventory/transfer-actions";
 
 const STATUS_LABEL: Record<string, string> = {
   in_transit: "In Transit",
@@ -49,16 +50,33 @@ export default async function TransferDetailPage({
     : { data: [] };
   const productMap = new Map((products ?? []).map((p) => [p.id, p]));
 
-  const [{ data: fromBranch }, { data: toBranch }] = await Promise.all([
-    supabase.from("branches").select("name").eq("id", xfer.from_branch_id).maybeSingle(),
-    supabase.from("branches").select("name").eq("id", xfer.to_branch_id).maybeSingle(),
-  ]);
+  const { data: orgBranches } = await supabase
+    .from("branches")
+    .select("id, name")
+    .order("name");
+  const branchNameById = new Map((orgBranches ?? []).map((b) => [b.id, b.name]));
+  const fromBranch = { name: branchNameById.get(xfer.from_branch_id) ?? null };
+  const toBranch = { name: branchNameById.get(xfer.to_branch_id) ?? null };
 
   const isDestination = ctx.activeBranchId === xfer.to_branch_id;
   const canReceive = isDestination && xfer.status === "in_transit" && can(ctx.role, "use_transfers");
+  const canEdit = xfer.status === "in_transit" && can(ctx.role, "manage_catalog");
 
   const totalUnits = (items ?? []).reduce((s, i) => s + i.quantity, 0);
   const totalCost = (items ?? []).reduce((s, i) => s + i.quantity * i.unit_cost_centavos, 0);
+
+  const csvRows: TransferCsvRow[] = (items ?? []).map((it) => {
+    const prod = productMap.get(it.product_id);
+    return {
+      product: prod?.name ?? it.product_id,
+      quantity: it.quantity,
+      unit: prod?.unit ?? "",
+      unitCost: (it.unit_cost_centavos / 100).toFixed(2),
+      totalCost: ((it.quantity * it.unit_cost_centavos) / 100).toFixed(2),
+    };
+  });
+  // Destination options: every branch in the org except the source.
+  const destOptions = (orgBranches ?? []).filter((b) => b.id !== xfer.from_branch_id);
 
   return (
     <div className="space-y-5 p-6 max-w-3xl">
@@ -69,6 +87,17 @@ export default async function TransferDetailPage({
         <ArrowLeft className="size-4" /> Back to transfers
       </Link>
 
+      <TransferActions
+        transferId={xfer.id}
+        editable={canEdit}
+        csvRows={csvRows}
+        csvFilename={`transfer-${xfer.id.slice(0, 8)}.csv`}
+        branches={destOptions}
+        currentToBranchId={xfer.to_branch_id}
+        currentNotes={xfer.notes ?? ""}
+      />
+
+      <div className="print-area space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold">Transfer</h1>
@@ -124,6 +153,7 @@ export default async function TransferDetailPage({
           Received {formatManila(xfer.received_at)}
         </p>
       ) : null}
+      </div>
 
       {canReceive ? (
         <div className="space-y-2">

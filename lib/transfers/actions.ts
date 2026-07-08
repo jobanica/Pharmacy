@@ -31,6 +31,56 @@ export async function createTransfer(
   return { ok: true, transferId: data as string };
 }
 
+/**
+ * Edit an in-transit transfer's notes and/or destination branch. These don't
+ * touch stock (the source was already deducted at creation; the destination is
+ * only a label until it's received), so editing them is safe. Quantities and
+ * products are intentionally NOT editable here — changing those would require
+ * reversing and re-applying source-branch stock movements.
+ */
+export async function updateTransfer(
+  transferId: string,
+  toBranchId: string,
+  notes: string,
+): Promise<ReceiveResult> {
+  const ctx = await requireAppContext();
+  if (!can(ctx.role, "manage_catalog")) return { error: "Permission denied" };
+
+  const supabase = await createClient();
+
+  const { data: xfer } = await supabase
+    .from("stock_transfers")
+    .select("id, from_branch_id, status")
+    .eq("id", transferId)
+    .maybeSingle();
+  if (!xfer) return { error: "Transfer not found" };
+  if (xfer.status !== "in_transit") {
+    return { error: "Only in-transit transfers can be edited" };
+  }
+  if (toBranchId === xfer.from_branch_id) {
+    return { error: "Destination must differ from the source branch" };
+  }
+
+  // Destination must be a real branch in this org.
+  const { data: dest } = await supabase
+    .from("branches")
+    .select("id")
+    .eq("id", toBranchId)
+    .eq("organization_id", ctx.organization.id)
+    .maybeSingle();
+  if (!dest) return { error: "Destination branch not found" };
+
+  const { error } = await supabase
+    .from("stock_transfers")
+    .update({ to_branch_id: toBranchId, notes: notes.trim() || null })
+    .eq("id", transferId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/inventory/transfers/${transferId}`);
+  revalidatePath("/inventory/transfers");
+  return { ok: true };
+}
+
 export async function receiveTransfer(transferId: string): Promise<ReceiveResult> {
   const ctx = await requireAppContext();
   if (!can(ctx.role, "use_transfers")) return { error: "Permission denied" };

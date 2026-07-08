@@ -7,6 +7,22 @@ import { createClient } from "@/lib/supabase/server";
 import { formatManila } from "@/lib/date/index";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CsvExportButton, type CsvColumn } from "@/components/alerts/csv-export-button";
+
+type TransferCsvRow = {
+  direction: string;
+  date: string;
+  counterparty: string;
+  notes: string;
+  status: string;
+};
+const LIST_CSV_COLUMNS: CsvColumn<TransferCsvRow>[] = [
+  { header: "Direction", value: (r) => r.direction },
+  { header: "Date", value: (r) => r.date },
+  { header: "Branch", value: (r) => r.counterparty },
+  { header: "Notes", value: (r) => r.notes },
+  { header: "Status", value: (r) => r.status },
+];
 
 const STATUS_LABEL: Record<string, string> = {
   in_transit: "In Transit",
@@ -52,6 +68,23 @@ export default async function TransfersPage() {
 
   const pendingIncoming = (incoming ?? []).filter((r) => r.status === "in_transit").length;
 
+  const csvRows: TransferCsvRow[] = [
+    ...(incoming ?? []).map((r) => ({
+      direction: "Incoming",
+      date: formatManila(r.created_at),
+      counterparty: branchMap.get(r.from_branch_id as string) ?? "—",
+      notes: r.notes ?? "",
+      status: STATUS_LABEL[r.status] ?? r.status,
+    })),
+    ...(outgoing ?? []).map((r) => ({
+      direction: "Outgoing",
+      date: formatManila(r.created_at),
+      counterparty: branchMap.get(r.to_branch_id as string) ?? "—",
+      notes: r.notes ?? "",
+      status: STATUS_LABEL[r.status] ?? r.status,
+    })),
+  ];
+
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
@@ -63,11 +96,18 @@ export default async function TransfersPage() {
             </p>
           ) : null}
         </div>
-        {can(ctx.role, "manage_catalog") ? (
-          <Button size="sm" render={<Link href="/inventory/transfers/new" />}>
-            <Plus className="mr-1 size-4" /> New transfer
-          </Button>
-        ) : null}
+        <div className="flex items-center gap-2">
+          <CsvExportButton
+            rows={csvRows}
+            columns={LIST_CSV_COLUMNS}
+            filename="stock-transfers.csv"
+          />
+          {can(ctx.role, "manage_catalog") ? (
+            <Button size="sm" render={<Link href="/inventory/transfers/new" />}>
+              <Plus className="mr-1 size-4" /> New transfer
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <Section title="Incoming" rows={incoming ?? []} branchKey="from_branch_id" branchMap={branchMap} label="From" />
