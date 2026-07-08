@@ -54,6 +54,10 @@ export default async function PurchaseOrderDetailPage({
     .maybeSingle();
   if (!po) notFound();
 
+  // Only owners may view POs from other branches; everyone else is limited to
+  // their active branch.
+  if (ctx.role !== "owner" && po.branch_id !== ctx.activeBranchId) notFound();
+
   const status = po.status as PoStatus;
   const isDraft = status === "draft";
   const isSent = status === "sent";

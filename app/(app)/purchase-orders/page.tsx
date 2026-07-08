@@ -34,12 +34,20 @@ export default async function PurchaseOrdersPage() {
     );
   }
 
-  const { data: pos } = await supabase
+  // Owners see every branch's POs; everyone else is scoped to their active
+  // branch and cannot see other branches' purchase orders.
+  const isOwner = ctx.role === "owner";
+  const activeBranchName =
+    ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "this branch";
+
+  let query = supabase
     .from("purchase_orders")
     .select(
-      "id, po_number, status, expected_date, supplier_id, suppliers(name), purchase_order_items(quantity_ordered, unit_cost_centavos)",
+      "id, po_number, status, expected_date, supplier_id, branch_id, suppliers(name), branches(name), purchase_order_items(quantity_ordered, unit_cost_centavos)",
     )
     .order("created_at", { ascending: false });
+  if (!isOwner) query = query.eq("branch_id", ctx.activeBranchId);
+  const { data: pos } = await query;
 
   const rows = (pos ?? []).map((po) => {
     const items =
@@ -47,14 +55,25 @@ export default async function PurchaseOrdersPage() {
         .purchase_order_items ?? [];
     const total = items.reduce((s, it) => s + it.quantity_ordered * it.unit_cost_centavos, 0);
     const supplier = (po as { suppliers: { name: string } | null }).suppliers;
-    return { ...po, itemCount: items.length, total, supplierName: supplier?.name ?? "—" };
+    const branch = (po as { branches: { name: string } | null }).branches;
+    return {
+      ...po,
+      itemCount: items.length,
+      total,
+      supplierName: supplier?.name ?? "—",
+      branchName: branch?.name ?? "—",
+    };
   });
 
   return (
     <div>
       <PageHeader
         title="Purchase Orders"
-        description="Order stock from suppliers and receive it into inventory."
+        description={
+          isOwner
+            ? "Order stock from suppliers and receive it into inventory. Showing all branches."
+            : `Order stock from suppliers and receive it into inventory. Showing ${activeBranchName} only.`
+        }
         action={
           <div className="flex gap-2">
             <Button variant="outline" render={<Link href="/purchase-orders/receipts" />}>
@@ -73,6 +92,7 @@ export default async function PurchaseOrdersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>PO #</TableHead>
+              {isOwner ? <TableHead>Branch</TableHead> : null}
               <TableHead>Supplier</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Expected</TableHead>
@@ -89,6 +109,7 @@ export default async function PurchaseOrdersPage() {
                       {po.po_number}
                     </Link>
                   </TableCell>
+                  {isOwner ? <TableCell>{po.branchName}</TableCell> : null}
                   <TableCell>{po.supplierName}</TableCell>
                   <TableCell>
                     <PoStatusBadge status={po.status as PoStatus} />
@@ -102,7 +123,7 @@ export default async function PurchaseOrdersPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={isOwner ? 7 : 6} className="h-24 text-center text-muted-foreground">
                   No purchase orders yet.
                 </TableCell>
               </TableRow>

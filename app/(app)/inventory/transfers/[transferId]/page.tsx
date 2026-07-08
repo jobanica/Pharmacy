@@ -39,6 +39,16 @@ export default async function TransferDetailPage({
 
   if (!xfer) notFound();
 
+  // Only owners may view transfers that don't involve their active branch;
+  // everyone else sees only their own branch's incoming/outgoing transfers.
+  if (
+    ctx.role !== "owner" &&
+    xfer.from_branch_id !== ctx.activeBranchId &&
+    xfer.to_branch_id !== ctx.activeBranchId
+  ) {
+    notFound();
+  }
+
   const { data: items } = await supabase
     .from("stock_transfer_items")
     .select("product_id, quantity, unit_cost_centavos")
