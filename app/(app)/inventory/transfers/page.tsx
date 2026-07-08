@@ -7,22 +7,10 @@ import { createClient } from "@/lib/supabase/server";
 import { formatManila } from "@/lib/date/index";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CsvExportButton, type CsvColumn } from "@/components/alerts/csv-export-button";
-
-type TransferCsvRow = {
-  direction: string;
-  date: string;
-  counterparty: string;
-  notes: string;
-  status: string;
-};
-const LIST_CSV_COLUMNS: CsvColumn<TransferCsvRow>[] = [
-  { header: "Direction", value: (r) => r.direction },
-  { header: "Date", value: (r) => r.date },
-  { header: "Branch", value: (r) => r.counterparty },
-  { header: "Notes", value: (r) => r.notes },
-  { header: "Status", value: (r) => r.status },
-];
+import {
+  TransfersCsvButton,
+  type TransferListCsvRow,
+} from "@/components/inventory/transfers-csv-button";
 
 const STATUS_LABEL: Record<string, string> = {
   in_transit: "In Transit",
@@ -68,7 +56,7 @@ export default async function TransfersPage() {
 
   const pendingIncoming = (incoming ?? []).filter((r) => r.status === "in_transit").length;
 
-  const csvRows: TransferCsvRow[] = [
+  const csvRows: TransferListCsvRow[] = [
     ...(incoming ?? []).map((r) => ({
       direction: "Incoming",
       date: formatManila(r.created_at),
@@ -97,11 +85,7 @@ export default async function TransfersPage() {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
-          <CsvExportButton
-            rows={csvRows}
-            columns={LIST_CSV_COLUMNS}
-            filename="stock-transfers.csv"
-          />
+          <TransfersCsvButton rows={csvRows} />
           {can(ctx.role, "manage_catalog") ? (
             <Button size="sm" render={<Link href="/inventory/transfers/new" />}>
               <Plus className="mr-1 size-4" /> New transfer
