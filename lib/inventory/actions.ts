@@ -49,6 +49,60 @@ export async function receiveStock(input: ReceiveStockInput): Promise<Result> {
   return { ok: true };
 }
 
+export type WriteOffResult = { ok: true; totalCostCentavos: number } | { error: string };
+
+export type BatchOption = {
+  id: string;
+  batch_number: string | null;
+  expiry_date: string | null;
+  quantity: number;
+  cost_centavos: number;
+};
+
+/** Batches with stock for a product at the active branch (for the write-off picker). */
+export async function getProductBatches(productId: string): Promise<BatchOption[]> {
+  const g = await guard();
+  if ("error" in g) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("batches")
+    .select("id, batch_number, expiry_date, quantity, cost_centavos")
+    .eq("branch_id", g.ctx.activeBranchId)
+    .eq("product_id", productId)
+    .gt("quantity", 0)
+    .order("expiry_date", { ascending: true, nullsFirst: false });
+  return (data ?? []) as BatchOption[];
+}
+
+/** Write off stock (expired / damaged / other) from a batch; records the cost. */
+export async function writeOffStock(
+  batchId: string,
+  quantity: number | string,
+  reason: "expired" | "damaged" | "other",
+  notes: string,
+): Promise<WriteOffResult> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+
+  const qty = Math.trunc(Number(quantity));
+  if (!Number.isFinite(qty) || qty <= 0) return { error: "Enter a quantity" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("write_off_stock", {
+    p_batch: batchId,
+    p_quantity: qty,
+    p_reason: reason,
+    ...(notes.trim() ? { p_notes: notes.trim() } : {}),
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/inventory");
+  revalidatePath("/inventory/adjustments");
+  revalidatePath("/alerts");
+  const totalCostCentavos = (data as { total_cost_centavos?: number } | null)?.total_cost_centavos ?? 0;
+  return { ok: true, totalCostCentavos };
+}
+
 /** Set a batch's quantity to an absolute value, logging the signed delta. */
 export async function adjustBatch(
   input: AdjustBatchInput,

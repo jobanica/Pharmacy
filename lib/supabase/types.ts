@@ -1653,6 +1653,54 @@ export type Database = {
           },
         ]
       }
+      stock_writeoffs: {
+        Row: {
+          id: string
+          organization_id: string
+          branch_id: string | null
+          product_id: string | null
+          batch_id: string | null
+          product_name: string | null
+          quantity: number
+          unit_cost_centavos: number
+          total_cost_centavos: number
+          reason: string
+          notes: string | null
+          created_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          branch_id?: string | null
+          product_id?: string | null
+          batch_id?: string | null
+          product_name?: string | null
+          quantity: number
+          unit_cost_centavos?: number
+          total_cost_centavos?: number
+          reason?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          branch_id?: string | null
+          product_id?: string | null
+          batch_id?: string | null
+          product_name?: string | null
+          quantity?: number
+          unit_cost_centavos?: number
+          total_cost_centavos?: number
+          reason?: string
+          notes?: string | null
+          created_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       receipt_scans: {
         Row: {
           branch_id: string | null
@@ -1743,6 +1791,36 @@ export type Database = {
       }
     }
     Views: {
+      v_dead_stock: {
+        Row: {
+          organization_id: string | null
+          branch_id: string | null
+          product_id: string | null
+          product_name: string | null
+          unit: string | null
+          on_hand: number | null
+          unit_cost_centavos: number | null
+          value_centavos: number | null
+          last_sold_at: string | null
+        }
+        Relationships: []
+      }
+      v_slow_moving: {
+        Row: {
+          organization_id: string | null
+          branch_id: string | null
+          product_id: string | null
+          product_name: string | null
+          unit: string | null
+          on_hand: number | null
+          sold_90d: number | null
+          days_of_supply: number | null
+          unit_cost_centavos: number | null
+          value_centavos: number | null
+          last_sold_at: string | null
+        }
+        Relationships: []
+      }
       v_expiring_batches: {
         Row: {
           batch_id: string | null
@@ -2071,6 +2149,10 @@ export type Database = {
       import_products: { Args: { p_branch: string; p_rows: Json }; Returns: Json }
       merge_duplicate_products: { Args: never; Returns: Json }
       reverse_po_receiving: { Args: { p_po: string }; Returns: Json }
+      write_off_stock: {
+        Args: { p_batch: string; p_quantity: number; p_reason?: string; p_notes?: string }
+        Returns: Json
+      }
       adjust_batch: {
         Args: { p_batch: string; p_new_quantity: number; p_reason?: string }
         Returns: undefined
