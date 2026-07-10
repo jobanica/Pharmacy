@@ -62,12 +62,17 @@ function WriteOffButton({ batchId }: { batchId: string }) {
       className="text-destructive"
       disabled={pending}
       onClick={() => {
-        if (!window.confirm("Write off this batch? It will be removed from on-hand stock.")) return;
+        if (
+          !window.confirm(
+            "Write off this batch as EXPIRED? Its stock is removed and the loss cost is recorded in Stock Adjustments.",
+          )
+        )
+          return;
         startTransition(async () => {
-          const res = await writeOffBatch(batchId, "Expired stock");
+          const res = await writeOffBatch(batchId);
           if ("error" in res) toast.error(res.error);
           else {
-            toast.success("Batch written off");
+            toast.success("Batch written off as expired");
             router.refresh();
           }
         });
