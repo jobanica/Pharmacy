@@ -96,6 +96,7 @@ export default async function AlertsPage() {
           <StaleStockTable
             rows={deadRows}
             kind="dead"
+            branchName={branchName}
             emptyMessage="No dead stock — every product in stock has sold in the last 90 days."
           />
         </TabsContent>
@@ -103,6 +104,7 @@ export default async function AlertsPage() {
           <StaleStockTable
             rows={slowRows}
             kind="slow"
+            branchName={branchName}
             emptyMessage="No slow-moving items — stock is turning over well."
           />
         </TabsContent>

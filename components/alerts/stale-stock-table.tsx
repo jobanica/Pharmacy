@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PrintButton } from "@/components/pos/print-button";
 import { formatCentavos } from "@/lib/money";
 import { formatManila } from "@/lib/date";
 
@@ -19,24 +20,43 @@ export function StaleStockTable({
   rows,
   kind,
   emptyMessage,
+  branchName = "",
 }: {
   rows: StaleRow[];
   kind: "dead" | "slow";
   emptyMessage: string;
+  branchName?: string;
 }) {
   const totalValue = rows.reduce((s, r) => s + (r.value_centavos ?? 0), 0);
+  const title = kind === "dead" ? "Dead stock" : "Slow-moving inventory";
 
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
+  const printedAt = new Date().toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <div className="grid gap-3">
-      <p className="text-sm text-muted-foreground">
-        {rows.length} item{rows.length !== 1 ? "s" : ""} · tied-up value{" "}
-        <span className="font-semibold text-foreground">{formatCentavos(totalValue)}</span>
-      </p>
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+        <p className="text-sm text-muted-foreground">
+          {rows.length} item{rows.length !== 1 ? "s" : ""} · tied-up value{" "}
+          <span className="font-semibold text-foreground">{formatCentavos(totalValue)}</span>
+        </p>
+        <PrintButton />
+      </div>
+      <div className="overflow-x-auto rounded-lg border print-area">
+        <div className="hidden p-4 print:block">
+          <h2 className="text-lg font-bold">{title}</h2>
+          <p className="text-sm">
+            {branchName ? `${branchName} · ` : ""}
+            {rows.length} item(s) · tied-up value {formatCentavos(totalValue)} · Printed {printedAt}
+          </p>
+        </div>
         <table className="w-full text-sm">
           <thead className="bg-muted/50 text-xs uppercase text-muted-foreground">
             <tr>
