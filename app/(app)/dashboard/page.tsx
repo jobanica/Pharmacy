@@ -50,22 +50,42 @@ export default async function DashboardPage({
   const { startUtc } = manilaDayRange(from);
   const { endUtc } = manilaDayRange(to);
 
-  let salesQuery = supabase
-    .from("sales")
-    .select("id, total_centavos, created_at, receipt_number")
-    .eq("status", "completed")
-    .gte("created_at", startUtc.toISOString())
-    .lt("created_at", endUtc.toISOString());
-  if (branch !== "all") salesQuery = salesQuery.eq("branch_id", branch);
-  const { data: sales } = await salesQuery;
+  // Page through sales (a busy 90-day window can exceed the 1000-row cap).
+  type SaleRow = { id: string; total_centavos: number; created_at: string; receipt_number: string };
+  const sales = await fetchAllRows<SaleRow>((f, t) => {
+    let q = supabase
+      .from("sales")
+      .select("id, total_centavos, created_at, receipt_number")
+      .eq("status", "completed")
+      .gte("created_at", startUtc.toISOString())
+      .lt("created_at", endUtc.toISOString())
+      .order("id")
+      .range(f, t);
+    if (branch !== "all") q = q.eq("branch_id", branch);
+    return q as unknown as PromiseLike<{ data: SaleRow[] | null }>;
+  });
 
-  const saleIds = (sales ?? []).map((s) => s.id);
-  const { data: items } = saleIds.length
-    ? await supabase
-        .from("sale_items")
-        .select("quantity, line_total_centavos, unit_cost_centavos, products(name)")
-        .in("sale_id", saleIds)
-    : { data: [] as never[] };
+  // Fetch line items via an inner join on the matching sales (NOT .in(saleIds),
+  // which overflows the request URL once there are a few hundred sale ids and
+  // silently returns nothing — that zeroed out gross profit and items sold).
+  type ItemRow = {
+    quantity: number;
+    line_total_centavos: number;
+    unit_cost_centavos: number;
+    products: { name: string } | null;
+  };
+  const items = await fetchAllRows<ItemRow>((f, t) => {
+    let q = supabase
+      .from("sale_items")
+      .select("quantity, line_total_centavos, unit_cost_centavos, products(name), sales!inner(branch_id, status, created_at)")
+      .eq("sales.status", "completed")
+      .gte("sales.created_at", startUtc.toISOString())
+      .lt("sales.created_at", endUtc.toISOString())
+      .order("id")
+      .range(f, t);
+    if (branch !== "all") q = q.eq("sales.branch_id", branch);
+    return q as unknown as PromiseLike<{ data: ItemRow[] | null }>;
+  });
 
   // Current inventory value at cost = Σ(on-hand quantity × unit cost) across
   // batches. A live snapshot, not date-ranged; follows the branch filter.
