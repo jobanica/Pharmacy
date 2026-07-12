@@ -10,7 +10,7 @@ import { can } from "@/lib/auth/roles";
 import { canUseInventory } from "@/lib/billing/plans";
 import { PlanUpsell } from "@/components/billing/plan-upsell";
 import { fetchAllRows } from "@/lib/supabase/paginate";
-import { readExpiryAlertDays } from "@/lib/alerts/actions";
+import { readExpiryAlertDays } from "@/lib/alerts/expiry-window";
 import { manilaBusinessDay, daysUntil } from "@/lib/date";
 
 export default async function AlertsPage() {
