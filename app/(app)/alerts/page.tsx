@@ -3,11 +3,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LowStockTable, type LowStockRow } from "@/components/alerts/low-stock-table";
 import { ExpiringTable, type ExpiringRow } from "@/components/alerts/expiring-table";
 import { StaleStockTable, type StaleRow } from "@/components/alerts/stale-stock-table";
+import { ExpiryThresholdControl } from "@/components/alerts/expiry-threshold-control";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
 import { canUseInventory } from "@/lib/billing/plans";
 import { PlanUpsell } from "@/components/billing/plan-upsell";
+import { fetchAllRows } from "@/lib/supabase/paginate";
+import { readExpiryAlertDays } from "@/lib/alerts/actions";
+import { manilaBusinessDay, daysUntil } from "@/lib/date";
 
 export default async function AlertsPage() {
   const ctx = await requireAppContext();
@@ -27,17 +31,39 @@ export default async function AlertsPage() {
   const branchName =
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "branch";
 
-  const [{ data: lowStock }, { data: expiring }, { data: dead }, { data: slow }] = await Promise.all([
+  // Configurable expiry-alert window (days). Query batches directly with a
+  // dynamic cutoff so any threshold works (the old view was hard-capped at 90).
+  const expiryDays = readExpiryAlertDays(ctx.organization.settings);
+  const today = manilaBusinessDay();
+  const cutoff = new Date(`${today}T00:00:00Z`);
+  cutoff.setUTCDate(cutoff.getUTCDate() + expiryDays);
+  const cutoffIso = cutoff.toISOString().slice(0, 10);
+
+  const [{ data: lowStock }, expiringBatches, { data: dead }, { data: slow }] = await Promise.all([
     supabase
       .from("v_low_stock")
       .select("product_id, product_name, unit, on_hand, reorder_point, deficit")
       .eq("branch_id", ctx.activeBranchId)
       .order("deficit", { ascending: false }),
-    supabase
-      .from("v_expiring_batches")
-      .select("batch_id, product_name, unit, batch_number, expiry_date, quantity, days_until, supplier_name")
-      .eq("branch_id", ctx.activeBranchId)
-      .order("days_until", { ascending: true }),
+    fetchAllRows<{
+      id: string;
+      batch_number: string | null;
+      expiry_date: string;
+      quantity: number;
+      products: { name: string; unit: string } | null;
+      suppliers: { name: string } | null;
+    }>((f, t) =>
+      supabase
+        .from("batches")
+        .select("id, batch_number, expiry_date, quantity, products(name, unit), suppliers(name)")
+        .eq("branch_id", ctx.activeBranchId)
+        .gt("quantity", 0)
+        .not("expiry_date", "is", null)
+        .lte("expiry_date", cutoffIso)
+        .order("expiry_date", { ascending: true })
+        .order("id")
+        .range(f, t),
+    ),
     supabase
       .from("v_dead_stock")
       .select("product_id, product_name, unit, on_hand, value_centavos, last_sold_at")
@@ -51,7 +77,16 @@ export default async function AlertsPage() {
   ]);
 
   const lowRows = (lowStock ?? []) as LowStockRow[];
-  const expRows = (expiring ?? []) as ExpiringRow[];
+  const expRows: ExpiringRow[] = expiringBatches.map((b) => ({
+    batch_id: b.id,
+    product_name: b.products?.name ?? "—",
+    unit: b.products?.unit ?? "",
+    batch_number: b.batch_number,
+    expiry_date: b.expiry_date,
+    quantity: b.quantity,
+    days_until: daysUntil(b.expiry_date),
+    supplier_name: b.suppliers?.name ?? null,
+  }));
   const deadRows: StaleRow[] = (dead ?? []).map((r) => ({
     product_id: r.product_id,
     product_name: r.product_name,
@@ -89,7 +124,8 @@ export default async function AlertsPage() {
         <TabsContent value="low" className="mt-4">
           <LowStockTable rows={lowRows} branchName={branchName} canManage={canManage} />
         </TabsContent>
-        <TabsContent value="expiring" className="mt-4">
+        <TabsContent value="expiring" className="mt-4 grid gap-4">
+          <ExpiryThresholdControl days={expiryDays} canEdit={ctx.role === "owner" || ctx.role === "manager"} />
           <ExpiringTable rows={expRows} branchName={branchName} canManage={canManage} />
         </TabsContent>
         <TabsContent value="dead" className="mt-4">
