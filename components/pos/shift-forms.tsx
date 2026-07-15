@@ -7,10 +7,19 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { openShift, closeShift, type ShiftSummary } from "@/lib/shifts/actions";
-import { formatCentavos } from "@/lib/money";
+import { openShift, closeShift, type ShiftSummary, type CashDenomRow } from "@/lib/shifts/actions";
+import { formatCentavos, centavosToPesos } from "@/lib/money";
 import { formatManila } from "@/lib/date";
 import type { PrinterType } from "@/lib/branding";
+
+// Philippine peso denominations (bills + coins), largest first, in centavos.
+const DENOMINATIONS = [
+  100000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 100, 25,
+] as const;
+
+function denomLabel(centavos: number): string {
+  return centavos >= 100 ? `₱${centavos / 100}` : `₱${(centavos / 100).toFixed(2)}`;
+}
 
 export function OpenShiftForm() {
   const [cash, setCash] = React.useState("");
@@ -54,11 +63,21 @@ export function CloseShiftForm({
   shiftId: string;
   printerType?: PrinterType;
 }) {
-  const [cash, setCash] = React.useState("");
+  const [counts, setCounts] = React.useState<Record<number, string>>({});
   const [notes, setNotes] = React.useState("");
   const [pending, startTransition] = React.useTransition();
   const [summary, setSummary] = React.useState<ShiftSummary | null>(null);
   const printAreaRef = React.useRef<HTMLDivElement>(null);
+
+  // Closing cash = sum of (denomination × count) entered in the breakdown.
+  const closingCentavos = DENOMINATIONS.reduce(
+    (sum, d) => sum + d * (parseInt(counts[d] || "0", 10) || 0),
+    0,
+  );
+  const cashBreakdown: CashDenomRow[] = DENOMINATIONS.map((d) => ({
+    denomCentavos: d,
+    count: parseInt(counts[d] || "0", 10) || 0,
+  })).filter((r) => r.count > 0);
 
   async function printSummary(s: ShiftSummary) {
     if (printerType === "bluetooth") {
@@ -79,10 +98,11 @@ export function CloseShiftForm({
 
   function submit() {
     startTransition(async () => {
-      const res = await closeShift(shiftId, cash, notes);
+      const res = await closeShift(shiftId, centavosToPesos(closingCentavos).toFixed(2), notes);
       if ("error" in res) { toast.error(res.error); return; }
       toast.success("Shift closed");
-      const s = res.data;
+      // Attach the client-side denomination breakdown so it prints on the slip.
+      const s: ShiftSummary = { ...res.data, cashBreakdown };
       setSummary(s);
       // Small delay to let the print area render before printing.
       setTimeout(() => printSummary(s), 500);
@@ -105,20 +125,32 @@ export function CloseShiftForm({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3">
-        <Label htmlFor="closing-cash" className="w-36 shrink-0">Closing cash count (₱)</Label>
-        <Input
-          id="closing-cash"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="0.00"
-          value={cash}
-          onChange={(e) => setCash(e.target.value)}
-          className="w-36"
-        />
+    <div className="space-y-4">
+      <div>
+        <Label className="mb-2 block">Count the drawer (cash breakdown)</Label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {DENOMINATIONS.map((d) => (
+            <div key={d} className="flex items-center gap-2 rounded-md border px-2 py-1.5">
+              <span className="w-12 shrink-0 text-sm text-muted-foreground">{denomLabel(d)}</span>
+              <span className="text-muted-foreground">×</span>
+              <Input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                placeholder="0"
+                value={counts[d] ?? ""}
+                onChange={(e) => setCounts((prev) => ({ ...prev, [d]: e.target.value }))}
+                className="h-8 w-full"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+          <span className="text-muted-foreground">Closing cash count</span>
+          <span className="font-semibold">{formatCentavos(closingCentavos)}</span>
+        </div>
       </div>
+
       <div className="flex items-start gap-3">
         <Label htmlFor="shift-notes" className="w-36 shrink-0 pt-2">Notes</Label>
         <textarea
@@ -170,6 +202,15 @@ function ShiftSummaryView({ summary: s }: { summary: ShiftSummary }) {
         <Row label="Net sales" value={formatCentavos(s.netCentavos)} bold />
       </div>
 
+      {s.paymentBreakdown && s.paymentBreakdown.length > 0 ? (
+        <div className="mt-2 border-t border-dashed pt-2 text-xs">
+          <div className="mb-1 font-semibold">By payment method</div>
+          {s.paymentBreakdown.map((p) => (
+            <Row key={p.method} label={p.label} value={formatCentavos(p.centavos)} />
+          ))}
+        </div>
+      ) : null}
+
       <div className="mt-2 border-t border-dashed pt-2 text-xs">
         <Row label="Opening cash" value={formatCentavos(s.openingCashCentavos)} />
         <Row label="Cash collected" value={formatCentavos(s.cashCollectedCentavos)} />
@@ -181,6 +222,19 @@ function ShiftSummaryView({ summary: s }: { summary: ShiftSummary }) {
           bold
         />
       </div>
+
+      {s.cashBreakdown && s.cashBreakdown.length > 0 ? (
+        <div className="mt-2 border-t border-dashed pt-2 text-xs">
+          <div className="mb-1 font-semibold">Cash breakdown</div>
+          {s.cashBreakdown.map((c) => (
+            <Row
+              key={c.denomCentavos}
+              label={`${denomLabel(c.denomCentavos)} × ${c.count}`}
+              value={formatCentavos(c.denomCentavos * c.count)}
+            />
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-2 border-t border-dashed pt-2 text-center text-xs text-gray-500">
         This is your shift closing record.

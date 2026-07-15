@@ -41,6 +41,24 @@ export function encodeShiftSummary(s: ShiftSummary, paper: ReceiptPaper = "80mm"
   b.line(lr("Closing cash", peso(s.closingCashCentavos), w));
   b.bold(true).line(lr("Over / Short", osText, w)).bold(false);
 
+  if (s.paymentBreakdown && s.paymentBreakdown.length > 0) {
+    b.line(dashes(w));
+    b.line("BY PAYMENT METHOD");
+    for (const p of s.paymentBreakdown) {
+      b.line(lr(p.label, peso(p.centavos), w));
+    }
+  }
+
+  if (s.cashBreakdown && s.cashBreakdown.length > 0) {
+    b.line(dashes(w));
+    b.line("CASH BREAKDOWN");
+    for (const c of s.cashBreakdown) {
+      const d = c.denomCentavos;
+      const label = `P${d >= 100 ? d / 100 : (d / 100).toFixed(2)} x ${c.count}`;
+      b.line(lr(label, peso(d * c.count), w));
+    }
+  }
+
   b.line(dashes(w)).align("center");
   b.line("Shift closing record");
 
