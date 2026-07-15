@@ -1416,10 +1416,9 @@ export type Database = {
           batch_id: string | null
           created_at: string
           id: string
-          item_name: string | null
           line_total_centavos: number
           organization_id: string
-          product_id: string | null
+          product_id: string
           quantity: number
           sale_id: string
           unit_cost_centavos: number
@@ -1429,10 +1428,9 @@ export type Database = {
           batch_id?: string | null
           created_at?: string
           id?: string
-          item_name?: string | null
           line_total_centavos: number
           organization_id: string
-          product_id?: string | null
+          product_id: string
           quantity: number
           sale_id: string
           unit_cost_centavos?: number
@@ -1442,10 +1440,9 @@ export type Database = {
           batch_id?: string | null
           created_at?: string
           id?: string
-          item_name?: string | null
           line_total_centavos?: number
           organization_id?: string
-          product_id?: string | null
+          product_id?: string
           quantity?: number
           sale_id?: string
           unit_cost_centavos?: number

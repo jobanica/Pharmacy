@@ -16,18 +16,10 @@ export type Tender = z.infer<typeof tenderSchema>;
 export const completeSaleSchema = z.object({
   items: z
     .array(
-      z
-        .object({
-          // Catalog line: productId set. Manual line: name + unitPriceCentavos.
-          productId: z.string().uuid().optional(),
-          name: z.string().max(200).optional(),
-          unitPriceCentavos: z.number().int().min(0).optional(),
-          quantity: z.number().int().positive(),
-        })
-        .refine(
-          (i) => Boolean(i.productId) || (i.name?.trim().length ?? 0) > 0,
-          { message: "Each line needs a product or a manual item name" },
-        ),
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.number().int().positive(),
+      }),
     )
     .min(1, "Cart is empty"),
   discountCentavos: z.number().int().min(0).default(0),
