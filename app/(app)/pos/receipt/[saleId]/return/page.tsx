@@ -40,6 +40,8 @@ export default async function ReturnPage({
     { name: string; unit: string; unitPrice: number; qty: number }
   >();
   for (const it of rawItems ?? []) {
+    // Manual (non-catalog) lines have no product and can't be returned to stock.
+    if (it.product_id == null) continue;
     const prod = (it as { products: { name: string; unit: string } | null }).products;
     const cur = byProduct.get(it.product_id) ?? {
       name: prod?.name ?? "Item",

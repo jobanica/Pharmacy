@@ -30,6 +30,7 @@ export type SellableProduct = {
 };
 
 type CartLine = { product: SellableProduct; qty: number };
+type ManualLine = { key: string; name: string; priceCentavos: number; qty: number };
 type TenderRow = { method: PaymentMethodValue; amount: string };
 
 const METHOD_LABELS: Record<PaymentMethodValue, string> = {
@@ -59,6 +60,12 @@ export function PosTerminal({
   const router = useRouter();
   const [search, setSearch] = React.useState("");
   const [cart, setCart] = React.useState<Map<string, CartLine>>(new Map());
+  const [manualLines, setManualLines] = React.useState<ManualLine[]>([]);
+  const [manualOpen, setManualOpen] = React.useState(false);
+  const [manualName, setManualName] = React.useState("");
+  const [manualPrice, setManualPrice] = React.useState("");
+  const [manualQty, setManualQty] = React.useState("1");
+  const manualCounter = React.useRef(0);
   const [discount, setDiscount] = React.useState("");
   const [discountType, setDiscountType] = React.useState<DiscountType>("none");
   const [beneficiaryIdNo, setBeneficiaryIdNo] = React.useState("");
@@ -131,26 +138,57 @@ export function PosTerminal({
     }
   }
 
+  function addManualLine() {
+    const name = manualName.trim();
+    const priceCentavos = manualPrice ? pesosToCentavos(manualPrice) : 0;
+    const qty = parseInt(manualQty || "1", 10) || 0;
+    if (!name) {
+      toast.error("Enter an item name");
+      return;
+    }
+    if (qty <= 0) {
+      toast.error("Enter a quantity");
+      return;
+    }
+    manualCounter.current += 1;
+    setManualLines((prev) => [
+      ...prev,
+      { key: `m-${manualCounter.current}`, name, priceCentavos, qty },
+    ]);
+    setManualName("");
+    setManualPrice("");
+    setManualQty("1");
+    setManualOpen(false);
+  }
+
+  function setManualQtyFor(key: string, qty: number) {
+    setManualLines((prev) =>
+      qty <= 0
+        ? prev.filter((m) => m.key !== key)
+        : prev.map((m) => (m.key === key ? { ...m, qty } : m)),
+    );
+  }
+
   const lines = [...cart.values()];
-  const subtotal = lines.reduce(
+  const productSubtotal = lines.reduce(
     (s, l) => s + l.product.default_price_centavos * l.qty,
     0,
   );
+  const manualSubtotal = manualLines.reduce((s, m) => s + m.priceCentavos * m.qty, 0);
+  const subtotal = productSubtotal + manualSubtotal;
+  const itemCount = lines.length + manualLines.length;
 
   // SC/PWD: server-authoritative formula mirrored here for preview.
   // discount = price - round(price / (1+vat/100) * 0.80), summed per item×qty.
   const scPwdDiscount = React.useMemo(() => {
     if (discountType !== "sc" && discountType !== "pwd") return 0;
     const divisor = 1 + vatRatePct / 100;
-    return lines.reduce(
-      (s, l) =>
-        s +
-        (l.product.default_price_centavos -
-          Math.round((l.product.default_price_centavos / divisor) * 0.8)) *
-          l.qty,
-      0,
+    const perUnit = (price: number) => price - Math.round((price / divisor) * 0.8);
+    return (
+      lines.reduce((s, l) => s + perUnit(l.product.default_price_centavos) * l.qty, 0) +
+      manualLines.reduce((s, m) => s + perUnit(m.priceCentavos) * m.qty, 0)
     );
-  }, [discountType, lines, vatRatePct]);
+  }, [discountType, lines, manualLines, vatRatePct]);
 
   const discountCentavos =
     discountType === "sc" || discountType === "pwd"
@@ -170,7 +208,7 @@ export function PosTerminal({
   const change = tenderedCentavos - total;
   const hasRxItems = lines.some((l) => l.product.requires_prescription);
   const rxSatisfied = !hasRxItems || prescriptionId != null;
-  const canComplete = lines.length > 0 && change >= 0 && rxSatisfied && !pending;
+  const canComplete = itemCount > 0 && change >= 0 && rxSatisfied && !pending;
 
   function checkout() {
     if (!canComplete) return;
@@ -179,7 +217,14 @@ export function PosTerminal({
         .map((t) => ({ method: t.method, amountCentavos: t.amount ? pesosToCentavos(t.amount) : 0 }))
         .filter((t) => t.amountCentavos > 0);
       const res = await completeSale({
-        items: lines.map((l) => ({ productId: l.product.id, quantity: l.qty })),
+        items: [
+          ...lines.map((l) => ({ productId: l.product.id, quantity: l.qty })),
+          ...manualLines.map((m) => ({
+            name: m.name,
+            unitPriceCentavos: m.priceCentavos,
+            quantity: m.qty,
+          })),
+        ],
         discountCentavos,
         amountTenderedCentavos: 0,
         customerId: customer?.id ?? null,
@@ -259,13 +304,57 @@ export function PosTerminal({
             </Badge>
           </div>
 
+          {manualOpen ? (
+            <div className="grid gap-2 rounded-md border p-2">
+              <Input
+                placeholder="Item name"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Price ₱"
+                  value={manualPrice}
+                  onChange={(e) => setManualPrice(e.target.value)}
+                />
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="Qty"
+                  value={manualQty}
+                  onChange={(e) => setManualQty(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={addManualLine}>
+                  Add to cart
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setManualOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => setManualOpen(true)}
+            >
+              <Plus className="size-4" /> Manual item
+            </Button>
+          )}
+
           <div className="min-h-[140px] flex-1 divide-y overflow-y-auto">
-            {lines.length === 0 ? (
+            {itemCount === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                Cart is empty. Scan or tap a product.
+                Cart is empty. Scan or tap a product, or add a manual item.
               </p>
-            ) : (
-              lines.map((l) => (
+            ) : null}
+            {lines.map((l) => (
                 <div key={l.product.id} className="flex items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">
@@ -304,8 +393,50 @@ export function PosTerminal({
                     </Button>
                   </div>
                 </div>
-              ))
-            )}
+              ))}
+            {manualLines.map((m) => (
+              <div key={m.key} className="flex items-center gap-2 py-2">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">
+                    {m.name}
+                    <Badge variant="outline" className="ml-1.5 align-middle text-[10px]">
+                      Manual
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {formatCentavos(m.priceCentavos)} × {m.qty} ={" "}
+                    {formatCentavos(m.priceCentavos * m.qty)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-7"
+                    onClick={() => setManualQtyFor(m.key, m.qty - 1)}
+                  >
+                    <Minus className="size-3" />
+                  </Button>
+                  <span className="w-6 text-center text-sm">{m.qty}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-7"
+                    onClick={() => setManualQtyFor(m.key, m.qty + 1)}
+                  >
+                    <Plus className="size-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-destructive"
+                    onClick={() => setManualQtyFor(m.key, 0)}
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
 
           <CustomerPicker
@@ -477,6 +608,7 @@ export function PosTerminal({
               variant="outline"
               onClick={() => {
                 setCart(new Map());
+                setManualLines([]);
                 setDiscount("");
                 setTenders([{ method: "cash", amount: "" }]);
                 setCustomer(null);
@@ -486,14 +618,14 @@ export function PosTerminal({
                 setBeneficiaryName("");
                 setPrescriptionId(null);
               }}
-              disabled={lines.length === 0 || pending}
+              disabled={itemCount === 0 || pending}
             >
               Clear
             </Button>
             <Button
               className="flex-1"
               onClick={hasRxItems && !prescriptionId ? () => setRxDialogOpen(true) : checkout}
-              disabled={lines.length === 0 || (change < 0 && tenderedCentavos > 0) || pending}
+              disabled={itemCount === 0 || (change < 0 && tenderedCentavos > 0) || pending}
             >
               {pending ? <Loader2 className="size-4 animate-spin" /> : null}
               {hasRxItems && !prescriptionId ? "Enter Prescription" : "Complete sale"}

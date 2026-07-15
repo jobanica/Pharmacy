@@ -53,7 +53,7 @@ export default async function ReceiptPage({
   const [{ data: items }, { data: branch }, { data: cashier }, { data: payments }] = await Promise.all([
     supabase
       .from("sale_items")
-      .select("product_id, quantity, unit_price_centavos, line_total_centavos, products(name, unit)")
+      .select("id, product_id, item_name, quantity, unit_price_centavos, line_total_centavos, products(name, unit)")
       .eq("sale_id", saleId),
     supabase.from("branches").select("name").eq("id", sale.branch_id).maybeSingle(),
     sale.cashier_id
@@ -69,10 +69,19 @@ export default async function ReceiptPage({
   >();
   for (const it of items ?? []) {
     const prod = (it as { products: { name: string; unit: string } | null }).products;
-    const key = it.product_id;
+    const manual = it.product_id == null;
+    // Catalog lines aggregate by product (FEFO can split across batches);
+    // manual lines are keyed by their own id so each stays a distinct row.
+    const key = manual ? `m:${it.id}` : `p:${it.product_id}`;
     const cur =
       byProduct.get(key) ??
-      { name: prod?.name ?? "Item", unit: prod?.unit ?? "", unitPrice: it.unit_price_centavos, qty: 0, total: 0 };
+      {
+        name: manual ? (it.item_name ?? "Item") : (prod?.name ?? "Item"),
+        unit: manual ? "" : (prod?.unit ?? ""),
+        unitPrice: it.unit_price_centavos,
+        qty: 0,
+        total: 0,
+      };
     cur.qty += it.quantity;
     cur.total += it.line_total_centavos;
     byProduct.set(key, cur);

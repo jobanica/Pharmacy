@@ -25,7 +25,11 @@ export async function completeSale(
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("complete_sale", {
     p_branch: ctx.activeBranchId,
-    p_items: d.items.map((i) => ({ product_id: i.productId, quantity: i.quantity })),
+    p_items: d.items.map((i) =>
+      i.productId
+        ? { product_id: i.productId, quantity: i.quantity }
+        : { name: i.name, unit_price_centavos: i.unitPriceCentavos ?? 0, quantity: i.quantity },
+    ),
     p_discount_centavos: d.discountCentavos,
     p_amount_tendered_centavos: d.amountTenderedCentavos,
     ...(d.customerId ? { p_customer: d.customerId } : {}),
