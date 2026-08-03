@@ -148,7 +148,7 @@ begin
     organization_id, branch_id, product_id, batch_id, type, quantity_delta, reason, created_by
   ) values (
     v_b.organization_id, v_b.branch_id, v_b.product_id, v_b.id,
-    case when v_reason = 'expired' then 'expiry_writeoff' else 'adjustment' end,
+    (case when v_reason = 'expired' then 'expiry_writeoff' else 'adjustment' end)::public.movement_type,
     -p_quantity, 'Write-off (' || v_reason || ')' || coalesce(': ' || nullif(p_notes, ''), ''),
     auth.uid()
   );
