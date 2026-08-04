@@ -2,12 +2,16 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Search, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Search, ExternalLink, Undo2, Ban, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { formatCentavos } from "@/lib/money";
 import { formatManila } from "@/lib/date";
+import { voidSale } from "@/lib/pos/actions";
 
 export type ReceiptRow = {
   id: string;
@@ -19,7 +23,13 @@ export type ReceiptRow = {
   customer: string;
 };
 
-export function ReceiptsList({ receipts }: { receipts: ReceiptRow[] }) {
+export function ReceiptsList({
+  receipts,
+  canManage = false,
+}: {
+  receipts: ReceiptRow[];
+  canManage?: boolean;
+}) {
   const [query, setQuery] = React.useState("");
 
   const filtered = React.useMemo(() => {
@@ -55,7 +65,7 @@ export function ReceiptsList({ receipts }: { receipts: ReceiptRow[] }) {
               <th className="px-3 py-2 text-left">Payment</th>
               <th className="px-3 py-2 text-right">Total</th>
               <th className="px-3 py-2 text-left">Status</th>
-              <th className="px-3 py-2" />
+              <th className="px-3 py-2 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -73,13 +83,28 @@ export function ReceiptsList({ receipts }: { receipts: ReceiptRow[] }) {
                     <Badge variant="secondary">Completed</Badge>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right">
-                  <Link
-                    href={`/pos/receipt/${r.id}`}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Open <ExternalLink className="size-3" />
-                  </Link>
+                <td className="px-3 py-2">
+                  <div className="flex items-center justify-end gap-1">
+                    {canManage && r.status !== "voided" ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          render={<Link href={`/pos/receipt/${r.id}/return`} />}
+                        >
+                          <Undo2 className="size-3.5" /> Return
+                        </Button>
+                        <VoidButton saleId={r.id} receiptNumber={r.receiptNumber} />
+                      </>
+                    ) : null}
+                    <Link
+                      href={`/pos/receipt/${r.id}`}
+                      className="inline-flex items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Open <ExternalLink className="size-3" />
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -97,5 +122,37 @@ export function ReceiptsList({ receipts }: { receipts: ReceiptRow[] }) {
         Showing {filtered.length} of {receipts.length} recent receipt(s).
       </p>
     </div>
+  );
+}
+
+function VoidButton({ saleId, receiptNumber }: { saleId: string; receiptNumber: string }) {
+  const router = useRouter();
+  const [pending, start] = React.useTransition();
+
+  function onVoid() {
+    if (!window.confirm(`Void receipt ${receiptNumber}? Stock is restored and the sale is reversed.`)) {
+      return;
+    }
+    start(async () => {
+      const res = await voidSale(saleId);
+      if ("error" in res) {
+        toast.error(res.error);
+        return;
+      }
+      toast.success(`Receipt ${receiptNumber} voided`);
+      router.refresh();
+    });
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 px-2 text-xs text-destructive"
+      onClick={onVoid}
+      disabled={pending}
+    >
+      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Ban className="size-3.5" />} Void
+    </Button>
   );
 }

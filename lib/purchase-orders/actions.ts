@@ -28,6 +28,42 @@ async function guard(): Promise<{ error: string } | { ctx: AppContext }> {
   return { ctx };
 }
 
+/**
+ * Permanently delete a purchase order (and its line items). Blocked once any
+ * stock has been received against it, so received inventory records stay intact
+ * — cancel such a PO instead.
+ */
+export async function deletePurchaseOrder(poId: string): Promise<Result> {
+  const g = await guard();
+  if ("error" in g) return { error: g.error };
+  const supabase = await createClient();
+
+  const { data: po } = await supabase
+    .from("purchase_orders")
+    .select("id, branch_id, purchase_order_items(quantity_received)")
+    .eq("id", poId)
+    .maybeSingle();
+  if (!po) return { error: "Purchase order not found" };
+
+  // Only the owner may delete another branch's PO; everyone else is scoped.
+  if (g.ctx.role !== "owner" && po.branch_id !== g.ctx.activeBranchId) {
+    return { error: "That purchase order is not in your branch" };
+  }
+
+  const items = (po as { purchase_order_items: { quantity_received: number }[] })
+    .purchase_order_items ?? [];
+  if (items.some((it) => it.quantity_received > 0)) {
+    return { error: "Can't delete a PO that already received stock. Cancel it instead." };
+  }
+
+  await supabase.from("purchase_order_items").delete().eq("purchase_order_id", poId);
+  const { error } = await supabase.from("purchase_orders").delete().eq("id", poId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/purchase-orders");
+  return { ok: true };
+}
+
 export async function createPurchaseOrder(
   input: CreatePoInput,
 ): Promise<CreateResult> {

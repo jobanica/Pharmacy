@@ -175,6 +175,15 @@
   html {
     @apply font-sans;
   }
+  /* Native <select> dropdowns: the browser paints the option popup using the
+     control's background. With bg-transparent that popup is white while text
+     inherits the light foreground → invisible. Force themed colors so options
+     are readable in dark mode. */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
 }
 /* Print: show only the receipt/summary, hide the app shell. */
 @media print {

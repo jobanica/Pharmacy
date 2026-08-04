@@ -12,8 +12,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PoStatusBadge } from "@/components/purchase-orders/po-status-badge";
+import { DeletePoButton } from "@/components/purchase-orders/delete-po-button";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { can } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import type { PoStatus } from "@/lib/supabase/types";
 import { canUseInventory } from "@/lib/billing/plans";
@@ -34,34 +36,38 @@ export default async function PurchaseOrdersPage() {
     );
   }
 
-  // Owners see every branch's POs; everyone else is scoped to their active
-  // branch and cannot see other branches' purchase orders.
-  const isOwner = ctx.role === "owner";
+  // Purchase orders are per-branch: show only the active branch's POs. Switch
+  // branches with the top selector to see another branch's orders.
+  const canManage = can(ctx.role, "use_purchase_orders");
   const activeBranchName =
     ctx.branches.find((b) => b.id === ctx.activeBranchId)?.name ?? "this branch";
 
-  let query = supabase
+  const { data: pos } = await supabase
     .from("purchase_orders")
     .select(
-      "id, po_number, status, expected_date, supplier_id, branch_id, suppliers(name), branches(name), purchase_order_items(quantity_ordered, unit_cost_centavos)",
+      "id, po_number, status, expected_date, supplier_id, branch_id, suppliers(name), branches(name), purchase_order_items(quantity_ordered, quantity_received, unit_cost_centavos)",
     )
+    .eq("branch_id", ctx.activeBranchId)
     .order("created_at", { ascending: false });
-  if (!isOwner) query = query.eq("branch_id", ctx.activeBranchId);
-  const { data: pos } = await query;
 
   const rows = (pos ?? []).map((po) => {
     const items =
-      (po as { purchase_order_items: { quantity_ordered: number; unit_cost_centavos: number }[] })
-        .purchase_order_items ?? [];
+      (po as {
+        purchase_order_items: {
+          quantity_ordered: number;
+          quantity_received: number;
+          unit_cost_centavos: number;
+        }[];
+      }).purchase_order_items ?? [];
     const total = items.reduce((s, it) => s + it.quantity_ordered * it.unit_cost_centavos, 0);
     const supplier = (po as { suppliers: { name: string } | null }).suppliers;
-    const branch = (po as { branches: { name: string } | null }).branches;
     return {
       ...po,
       itemCount: items.length,
       total,
       supplierName: supplier?.name ?? "—",
-      branchName: branch?.name ?? "—",
+      // A PO with no received units can be safely deleted.
+      received: items.some((it) => it.quantity_received > 0),
     };
   });
 
@@ -69,11 +75,7 @@ export default async function PurchaseOrdersPage() {
     <div>
       <PageHeader
         title="Purchase Orders"
-        description={
-          isOwner
-            ? "Order stock from suppliers and receive it into inventory. Showing all branches."
-            : `Order stock from suppliers and receive it into inventory. Showing ${activeBranchName} only.`
-        }
+        description={`Order stock from suppliers and receive it into inventory. Showing ${activeBranchName} only.`}
         action={
           <div className="flex gap-2">
             <Button variant="outline" render={<Link href="/purchase-orders/receipts" />}>
@@ -92,12 +94,12 @@ export default async function PurchaseOrdersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>PO #</TableHead>
-              {isOwner ? <TableHead>Branch</TableHead> : null}
               <TableHead>Supplier</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Expected</TableHead>
               <TableHead>Items</TableHead>
               <TableHead>Est. total</TableHead>
+              {canManage ? <TableHead /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -109,7 +111,6 @@ export default async function PurchaseOrdersPage() {
                       {po.po_number}
                     </Link>
                   </TableCell>
-                  {isOwner ? <TableCell>{po.branchName}</TableCell> : null}
                   <TableCell>{po.supplierName}</TableCell>
                   <TableCell>
                     <PoStatusBadge status={po.status as PoStatus} />
@@ -119,11 +120,16 @@ export default async function PurchaseOrdersPage() {
                   </TableCell>
                   <TableCell>{po.itemCount}</TableCell>
                   <TableCell>{formatCentavos(po.total)}</TableCell>
+                  {canManage ? (
+                    <TableCell className="text-right">
+                      <DeletePoButton poId={po.id} poNumber={po.po_number} received={po.received} />
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={isOwner ? 7 : 6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={canManage ? 7 : 6} className="h-24 text-center text-muted-foreground">
                   No purchase orders yet.
                 </TableCell>
               </TableRow>

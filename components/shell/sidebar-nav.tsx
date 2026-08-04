@@ -8,9 +8,18 @@ import { NAV_ITEMS } from "@/lib/nav";
 import { can, type Role } from "@/lib/auth/roles";
 import { isStarterPlan, isProPlan } from "@/lib/billing/plans";
 
-export function SidebarNav({ role, plan }: { role: Role; plan: string }) {
+export function SidebarNav({
+  role,
+  plan,
+  registerReading = true,
+}: {
+  role: Role;
+  plan: string;
+  registerReading?: boolean;
+}) {
   const pathname = usePathname();
   const items = NAV_ITEMS.filter((item) => {
+    if (item.href === "/pos/reading" && !registerReading) return false;
     if (item.requires && !can(role, item.requires)) return false;
     if (item.requiresPlan === "starter" && !isStarterPlan(plan)) return false;
     if (item.requiresPlan === "pro" && !isProPlan(plan)) return false;

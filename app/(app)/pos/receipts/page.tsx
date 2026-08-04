@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { ReceiptsList, type ReceiptRow } from "@/components/pos/receipts-list";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { can } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function ReceiptsPage() {
         <ArrowLeft className="size-4" />
         Back to POS
       </Link>
-      <ReceiptsList receipts={receipts} />
+      <ReceiptsList receipts={receipts} canManage={can(ctx.role, "void_sale")} />
     </div>
   );
 }

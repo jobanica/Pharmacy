@@ -9,6 +9,7 @@ import { UserMenu } from "@/components/shell/user-menu";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import { UpgradeCard } from "@/components/shell/upgrade-card";
 import { ShellFooter } from "@/components/shell/shell-footer";
+import { isRegisterReadingEnabled } from "@/lib/features";
 import { getPlatformAdmin } from "@/lib/admin/auth";
 import { readBrand } from "@/lib/branding";
 import { NewOrderWatcher } from "@/components/orders/new-order-watcher";
@@ -20,6 +21,7 @@ export default async function AppLayout({
 }) {
   const ctx = await requireAppContext();
   const brand = readBrand(ctx.organization.settings);
+  const registerReading = isRegisterReadingEnabled(ctx.organization.settings);
   const isPlatformAdmin = Boolean(await getPlatformAdmin());
 
   const brandStyle = brand.brandColor
@@ -53,7 +55,7 @@ export default async function AppLayout({
         </div>
         {/* Only the nav scrolls; the upgrade card + footer stay pinned. */}
         <div className="min-h-0 flex-1 overflow-y-auto">
-          <SidebarNav role={ctx.role} plan={ctx.organization.plan} />
+          <SidebarNav role={ctx.role} plan={ctx.organization.plan} registerReading={registerReading} />
         </div>
         <div className="shrink-0 p-3">
           <UpgradeCard />
@@ -70,6 +72,7 @@ export default async function AppLayout({
             <MobileNav
               role={ctx.role}
               plan={ctx.organization.plan}
+              registerReading={registerReading}
               appName={brand.name}
               orgName={ctx.organization.name}
               isPlatformAdmin={isPlatformAdmin}

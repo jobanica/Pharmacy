@@ -20,12 +20,14 @@ import type { Role } from "@/lib/auth/roles";
 export function MobileNav({
   role,
   plan,
+  registerReading = true,
   appName,
   orgName,
   isPlatformAdmin = false,
 }: {
   role: Role;
   plan: string;
+  registerReading?: boolean;
   appName: string;
   orgName: string;
   isPlatformAdmin?: boolean;
@@ -49,7 +51,7 @@ export function MobileNav({
           <span className="text-xs text-muted-foreground">{orgName}</span>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto" onClick={() => setOpen(false)}>
-          <SidebarNav role={role} plan={plan} />
+          <SidebarNav role={role} plan={plan} registerReading={registerReading} />
         </div>
         <ShellFooter isPlatformAdmin={isPlatformAdmin} />
       </SheetContent>

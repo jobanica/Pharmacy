@@ -34,3 +34,28 @@ export async function updateOrganization(
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** Owner toggles whether the Register Reading page/nav is shown. */
+export async function setRegisterReadingEnabled(enabled: boolean): Promise<OrgResult> {
+  const ctx = await requireAppContext();
+  if (ctx.role !== "owner") {
+    return { error: "Only the owner can change this setting." };
+  }
+  const supabase = await createClient();
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", ctx.organization.id)
+    .maybeSingle();
+  const settings = (org?.settings ?? {}) as Record<string, unknown>;
+  const features = (settings.features ?? {}) as Record<string, unknown>;
+  const { error } = await supabase
+    .from("organizations")
+    .update({ settings: { ...settings, features: { ...features, register_reading: enabled } } })
+    .eq("id", ctx.organization.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/settings");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

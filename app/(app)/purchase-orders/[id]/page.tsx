@@ -202,6 +202,9 @@ export default async function PurchaseOrderDetailPage({
           <CardTitle>Items</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3">
+          {isDraft && canManage ? (
+            <AddItemForm poId={po.id} products={productsRes.data ?? []} />
+          ) : null}
           <Table>
             <TableHeader>
               <TableRow>
@@ -247,10 +250,6 @@ export default async function PurchaseOrderDetailPage({
               )}
             </TableBody>
           </Table>
-
-          {isDraft && canManage ? (
-            <AddItemForm poId={po.id} products={productsRes.data ?? []} />
-          ) : null}
 
           <div className="flex justify-end border-t pt-3 text-sm font-semibold">
             Total: <span className="ml-2">{formatCentavos(total)}</span>

@@ -19,6 +19,8 @@ export default async function OrdersPage() {
       .select(
         "id, order_number, customer_name, customer_phone, fulfillment, payment, status, delivery_address, delivery_lat, delivery_lng, notes, total_centavos, created_at, branches(name), order_items(product_name, quantity, line_total_centavos)",
       )
+      // Per-branch: only orders for the active branch (switch branches to see others).
+      .eq("branch_id", ctx.activeBranchId)
       .order("created_at", { ascending: false })
       .limit(200),
     supabase.from("organizations").select("slug").eq("id", ctx.organization.id).maybeSingle(),
@@ -39,7 +41,7 @@ export default async function OrdersPage() {
     <div className="grid gap-4">
       <PageHeader
         title="Online Orders"
-        description="Orders placed from your public storefront. Accept and fulfill them here."
+        description="Orders placed from your public storefront for this branch. Accept and fulfill them here."
         action={
           storeUrl ? (
             <div className="flex items-center gap-2">

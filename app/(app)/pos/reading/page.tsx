@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
+import { isRegisterReadingEnabled } from "@/lib/features";
 import { formatCentavos } from "@/lib/money";
 import { formatManila } from "@/lib/date";
 import { readTax } from "@/lib/tax/settings";
@@ -15,6 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ReadingPage() {
   const ctx = await requireAppContext();
+  if (!isRegisterReadingEnabled(ctx.organization.settings)) notFound();
   const supabase = await createClient();
   const canClose = can(ctx.role, "manage_members");
 
