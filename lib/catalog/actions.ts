@@ -55,6 +55,7 @@ function productRow(input: ProductInput, organizationId: string) {
     requires_prescription: input.requiresPrescription,
     reorder_point: input.reorderPoint,
     default_price_centavos: pesosToCentavos(input.price),
+    default_cost_centavos: pesosToCentavos(input.cost),
     is_active: input.isActive,
   };
 }

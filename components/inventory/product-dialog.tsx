@@ -41,6 +41,7 @@ export type ProductRow = {
   requires_prescription: boolean;
   reorder_point: number;
   default_price_centavos: number;
+  default_cost_centavos: number;
   is_active: boolean;
 };
 
@@ -232,9 +233,12 @@ export function ProductDialog({
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <Field label="Selling price (₱)" error={form.formState.errors.price?.message}>
               <Input type="number" step="0.01" min="0" {...form.register("price")} />
+            </Field>
+            <Field label="Unit cost (₱)" error={form.formState.errors.cost?.message}>
+              <Input type="number" step="0.01" min="0" {...form.register("cost")} />
             </Field>
             <Field label="Reorder point" error={form.formState.errors.reorderPoint?.message}>
               <Input type="number" min="0" {...form.register("reorderPoint")} />
@@ -341,6 +345,7 @@ function defaultsFor(product?: ProductRow): ProductFormValues {
     requiresPrescription: product?.requires_prescription ?? false,
     reorderPoint: product?.reorder_point ?? 0,
     price: product ? centavosToPesos(product.default_price_centavos) : 0,
+    cost: product ? centavosToPesos(product.default_cost_centavos) : 0,
     isActive: product?.is_active ?? true,
   };
 }

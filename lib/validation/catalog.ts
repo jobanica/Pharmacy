@@ -19,6 +19,8 @@ export const productSchema = z.object({
   reorderPoint: z.coerce.number().int("Whole numbers only").min(0).default(0),
   // Selling price entered in pesos; converted to integer centavos at the action.
   price: z.coerce.number().min(0, "Price cannot be negative").default(0),
+  // Unit cost in pesos; used to cost stock losses when a batch has no cost.
+  cost: z.coerce.number().min(0, "Cost cannot be negative").default(0),
   isActive: z.boolean().default(true),
 });
 export type ProductInput = z.output<typeof productSchema>;

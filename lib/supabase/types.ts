@@ -1184,6 +1184,7 @@ export type Database = {
           barcode: string | null
           category_id: string | null
           created_at: string
+          default_cost_centavos: number
           default_price_centavos: number
           drug_class: string | null
           storage_conditions: string | null
@@ -1204,6 +1205,7 @@ export type Database = {
           barcode?: string | null
           category_id?: string | null
           created_at?: string
+          default_cost_centavos?: number
           default_price_centavos?: number
           drug_class?: string | null
           storage_conditions?: string | null
@@ -1224,6 +1226,7 @@ export type Database = {
           barcode?: string | null
           category_id?: string | null
           created_at?: string
+          default_cost_centavos?: number
           default_price_centavos?: number
           drug_class?: string | null
           storage_conditions?: string | null

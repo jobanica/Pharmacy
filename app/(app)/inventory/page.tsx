@@ -35,7 +35,7 @@ export default async function InventoryPage() {
         supabase
           .from("products")
           .select(
-            "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, is_active, categories(name)",
+            "id, name, generic_name, category_id, sku, barcode, unit, requires_prescription, reorder_point, default_price_centavos, default_cost_centavos, is_active, categories(name)",
           )
           .order("name", { ascending: true })
           .order("id") // unique tiebreaker so paging never repeats/skips rows
