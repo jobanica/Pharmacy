@@ -4,6 +4,10 @@ import { CalendarX, PackageX, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { WriteOffDialog } from "@/components/inventory/write-off-dialog";
+import {
+  AdjustmentsCsvButton,
+  type AdjustmentCsvRow,
+} from "@/components/inventory/adjustments-csv-button";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { can } from "@/lib/auth/roles";
@@ -54,6 +58,15 @@ export default async function AdjustmentsPage() {
   ]);
 
   const rows = writeoffs ?? [];
+  const csvRows: AdjustmentCsvRow[] = rows.map((r) => ({
+    date: formatManila(r.created_at, "MMM d, yyyy h:mm a"),
+    product: r.product_name ?? "",
+    reason: REASON_LABEL[r.reason] ?? r.reason,
+    quantity: r.quantity,
+    unitCost: (r.unit_cost_centavos / 100).toFixed(2),
+    totalCost: (r.total_cost_centavos / 100).toFixed(2),
+    notes: r.notes ?? "",
+  }));
   const expiredTotal = rows.filter((r) => r.reason === "expired").reduce((s, r) => s + r.total_cost_centavos, 0);
   const damagedTotal = rows.filter((r) => r.reason === "damaged").reduce((s, r) => s + r.total_cost_centavos, 0);
   const otherTotal = rows.filter((r) => r.reason === "other").reduce((s, r) => s + r.total_cost_centavos, 0);
@@ -70,15 +83,18 @@ export default async function AdjustmentsPage() {
         title="Stock Adjustments"
         description={`Write-offs for ${branchName}. Loss cost is tracked by reason.`}
         action={
-          <WriteOffDialog
-            products={products}
-            trigger={
-              <Button>
-                <Trash2 className="size-4" />
-                Record adjustment
-              </Button>
-            }
-          />
+          <div className="flex items-center gap-2">
+            <AdjustmentsCsvButton rows={csvRows} />
+            <WriteOffDialog
+              products={products}
+              trigger={
+                <Button>
+                  <Trash2 className="size-4" />
+                  Record adjustment
+                </Button>
+              }
+            />
+          </div>
         }
       />
 
