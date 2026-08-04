@@ -131,7 +131,8 @@ export function CreatePoForm({
     setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   }
   function addLine() {
-    setLines((prev) => [...prev, { productId: "", quantityOrdered: "1", unitCost: "" }]);
+    // Prepend so the empty search row is always at the top, no scrolling.
+    setLines((prev) => [{ productId: "", quantityOrdered: "1", unitCost: "" }, ...prev]);
   }
   function removeLine(i: number) {
     setLines((prev) => prev.filter((_, idx) => idx !== i));
@@ -145,12 +146,12 @@ export function CreatePoForm({
         (l) => !(l.productId === "" && l.quantityOrdered === "1" && l.unitCost === ""),
       );
       return [
-        ...cleaned,
         {
           productId: item.product_id,
           quantityOrdered: String(Math.max(item.deficit, 1)),
           unitCost: "",
         },
+        ...cleaned,
       ];
     });
   }
@@ -262,6 +263,10 @@ export function CreatePoForm({
 
         <div className="grid gap-2">
           <Label>Items</Label>
+          <Button variant="outline" size="sm" className="w-fit" onClick={addLine}>
+            <Plus className="size-4" />
+            Add line
+          </Button>
           <div className="grid gap-2">
             {lines.map((l, i) => (
               <div key={i} className="flex flex-wrap items-end gap-2">
@@ -303,10 +308,6 @@ export function CreatePoForm({
               </div>
             ))}
           </div>
-          <Button variant="outline" size="sm" className="w-fit" onClick={addLine}>
-            <Plus className="size-4" />
-            Add line
-          </Button>
         </div>
 
         <div className="grid gap-2">
