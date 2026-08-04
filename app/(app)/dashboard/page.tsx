@@ -159,6 +159,72 @@ export default async function DashboardPage({
     .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
     .slice(0, 6);
 
+  // Per-branch breakdown for owners/managers of multi-branch orgs. Always spans
+  // ALL branches for the selected period, independent of the branch filter.
+  const branchName = new Map(ctx.branches.map((b) => [b.id, b.name]));
+  const showByBranch = canViewAll && ctx.branches.length > 1;
+  let salesByBranch: { branchId: string; name: string; revenue: number; count: number }[] = [];
+  let itemsByBranch: { branchId: string; name: string; items: { name: string; qty: number; total: number }[] }[] = [];
+  if (showByBranch) {
+    const bSales = await fetchAllRows<{ branch_id: string; total_centavos: number }>((f, t) =>
+      supabase
+        .from("sales")
+        .select("branch_id, total_centavos")
+        .eq("status", "completed")
+        .gte("created_at", startUtc.toISOString())
+        .lt("created_at", endUtc.toISOString())
+        .order("id")
+        .range(f, t) as unknown as PromiseLike<{ data: { branch_id: string; total_centavos: number }[] | null }>,
+    );
+    const bItems = await fetchAllRows<{
+      quantity: number;
+      line_total_centavos: number;
+      products: { name: string } | null;
+      sales: { branch_id: string } | null;
+    }>((f, t) =>
+      supabase
+        .from("sale_items")
+        .select("quantity, line_total_centavos, products(name), sales!inner(branch_id, status, created_at)")
+        .eq("sales.status", "completed")
+        .gte("sales.created_at", startUtc.toISOString())
+        .lt("sales.created_at", endUtc.toISOString())
+        .order("id")
+        .range(f, t) as unknown as PromiseLike<{ data: never[] | null }>,
+    );
+
+    const revMap = new Map<string, { revenue: number; count: number }>();
+    for (const s of bSales) {
+      const cur = revMap.get(s.branch_id) ?? { revenue: 0, count: 0 };
+      cur.revenue += s.total_centavos;
+      cur.count += 1;
+      revMap.set(s.branch_id, cur);
+    }
+    salesByBranch = [...revMap.entries()]
+      .map(([branchId, v]) => ({ branchId, name: branchName.get(branchId) ?? "—", ...v }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    const perBranchItems = new Map<string, Map<string, { qty: number; total: number }>>();
+    for (const it of bItems) {
+      const bid = it.sales?.branch_id;
+      if (!bid) continue;
+      const name = it.products?.name ?? "Unknown";
+      const m = perBranchItems.get(bid) ?? new Map();
+      const cur = m.get(name) ?? { qty: 0, total: 0 };
+      cur.qty += it.quantity;
+      cur.total += it.line_total_centavos;
+      m.set(name, cur);
+      perBranchItems.set(bid, m);
+    }
+    itemsByBranch = salesByBranch.map((b) => ({
+      branchId: b.branchId,
+      name: b.name,
+      items: [...(perBranchItems.get(b.branchId) ?? new Map()).entries()]
+        .map(([name, v]) => ({ name, ...(v as { qty: number; total: number }) }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5),
+    }));
+  }
+
   const cards: { icon: LucideIcon; label: string; value: string; gradient: string; sub?: string }[] = [
     { icon: Coins, label: "Total Revenue", value: formatCentavos(revenue), gradient: "from-blue-500 to-indigo-600" },
     { icon: TrendingUp, label: "Gross Profit", value: formatCentavos(profit), gradient: "from-teal-400 to-cyan-600", sub: `${marginPct.toFixed(0)}% margin` },
@@ -276,6 +342,65 @@ export default async function DashboardPage({
               </table>
             </div>
           </div>
+
+          {showByBranch ? (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* Sales by branch */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+                <h3 className="mb-3 font-semibold">Sales by branch</h3>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <th className="pb-2 font-medium">Branch</th>
+                      <th className="pb-2 text-right font-medium">Txns</th>
+                      <th className="pb-2 text-right font-medium">Revenue</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salesByBranch.map((b) => (
+                      <tr key={b.branchId} className="border-t border-white/5">
+                        <td className="py-2 font-medium">{b.name}</td>
+                        <td className="py-2 text-right text-muted-foreground">{b.count}</td>
+                        <td className="py-2 text-right">{formatCentavos(b.revenue)}</td>
+                      </tr>
+                    ))}
+                    {salesByBranch.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="py-6 text-center text-muted-foreground">No sales in this range.</td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Top items per branch */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-xl">
+                <h3 className="mb-3 font-semibold">Top items by branch</h3>
+                <div className="grid gap-4">
+                  {itemsByBranch.map((b) => (
+                    <div key={b.branchId}>
+                      <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-fuchsia-300">{b.name}</div>
+                      {b.items.length > 0 ? (
+                        <table className="w-full text-sm">
+                          <tbody>
+                            {b.items.map((it) => (
+                              <tr key={it.name} className="border-t border-white/5">
+                                <td className="py-1.5">{it.name}</td>
+                                <td className="py-1.5 text-right text-muted-foreground">{it.qty} sold</td>
+                                <td className="py-1.5 text-right">{formatCentavos(it.total)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No sales.</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </div>
