@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ProductCombobox } from "@/components/purchase-orders/product-combobox";
 import { Label } from "@/components/ui/label";
 import {
   updatePoHeader,
@@ -271,18 +272,7 @@ export function AddItemForm({ poId, products }: { poId: string; products: Produc
 
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <select
-        value={productId}
-        onChange={(e) => setProductId(e.target.value)}
-        className="h-9 min-w-[180px] flex-1 rounded-md border bg-transparent px-3 text-sm"
-      >
-        <option value="">Add product…</option>
-        {products.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      <ProductCombobox products={products} value={productId} onChange={setProductId} />
       <Input type="number" min="1" value={qty} onChange={(e) => setQty(e.target.value)} className="w-20" placeholder="Qty" />
       <Input type="number" min="0" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} className="w-28" placeholder="Cost ₱" />
       <Button variant="outline" onClick={add} disabled={pending}>

@@ -31,6 +31,7 @@ import {
 } from "@/components/purchase-orders/po-controls";
 import { requireAppContext } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
+import { fetchAllRows } from "@/lib/supabase/paginate";
 import { can } from "@/lib/auth/roles";
 import { formatCentavos } from "@/lib/money";
 import type { PoStatus } from "@/lib/supabase/types";
@@ -72,7 +73,17 @@ export default async function PurchaseOrderDetailPage({
       ? supabase.from("suppliers").select("id, name").order("name")
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
     isDraft && canManage
-      ? supabase.from("products").select("id, name").eq("is_active", true).order("name")
+      ? // Page through so ALL products are addable (PostgREST caps at 1000 —
+        // otherwise only the first ~1000 by name would appear).
+        fetchAllRows<{ id: string; name: string }>((from, to) =>
+          supabase
+            .from("products")
+            .select("id, name")
+            .eq("is_active", true)
+            .order("name")
+            .order("id")
+            .range(from, to),
+        ).then((data) => ({ data }))
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ]);
 

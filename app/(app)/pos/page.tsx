@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { ReceiptText } from "lucide-react";
 
 import { PageHeader } from "@/components/shell/page-header";
+import { Button } from "@/components/ui/button";
 import { PosTerminal, type SellableProduct } from "@/components/pos/pos-terminal";
 import {
   Card,
@@ -83,6 +85,12 @@ export default async function PosPage() {
       <PageHeader
         title="Point of Sale"
         description={`Selling from ${branchName}. Today: ${todaysCount} sale(s), ${formatCentavos(todaysTotal)}.`}
+        action={
+          <Button variant="outline" render={<Link href="/pos/receipts" />}>
+            <ReceiptText className="size-4" />
+            Receipts
+          </Button>
+        }
       />
 
       <PosTerminal
