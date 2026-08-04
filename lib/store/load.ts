@@ -2,6 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { readBrand, type Brand } from "@/lib/branding";
+import { readStorefront, type Storefront } from "@/lib/storefront/settings";
 
 type Branch = { id: string; name: string; address: string | null; phone: string | null };
 type Product = {
@@ -17,6 +18,7 @@ export type StoreData = {
   slug: string;
   name: string;
   brand: Brand;
+  storefront: Storefront;
   branches: Branch[];
   products: Product[];
 };
@@ -63,6 +65,7 @@ export async function loadStore(
     slug: org.slug,
     name: org.name,
     brand: readBrand(org.settings, org.name),
+    storefront: readStorefront(org.settings),
     branches,
     products: products ?? [],
   };

@@ -21,6 +21,7 @@ export default async function SettingsLayout({
     ...(isOwner ? [{ href: "/settings/tax", label: "Tax & receipts" }] : []),
     ...(isOwner ? [{ href: "/settings/branding", label: "Branding & printer" }] : []),
     ...(isOwner ? [{ href: "/settings/domain", label: "Custom domain" }] : []),
+    ...(isOwner ? [{ href: "/settings/storefront", label: "Online store" }] : []),
     ...(canManageLoyalty ? [{ href: "/settings/loyalty", label: "Loyalty" }] : []),
     ...(isOwner ? [{ href: "/settings/billing", label: "Billing" }] : []),
   ];

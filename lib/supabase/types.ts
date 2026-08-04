@@ -787,6 +787,7 @@ export type Database = {
           created_at: string
           customer_name: string
           customer_phone: string
+          delivery_fee_centavos: number
           delivery_address: string | null
           delivery_lat: number | null
           delivery_lng: number | null
@@ -805,6 +806,7 @@ export type Database = {
           created_at?: string
           customer_name: string
           customer_phone: string
+          delivery_fee_centavos?: number
           delivery_address?: string | null
           delivery_lat?: number | null
           delivery_lng?: number | null
@@ -823,6 +825,7 @@ export type Database = {
           created_at?: string
           customer_name?: string
           customer_phone?: string
+          delivery_fee_centavos?: number
           delivery_address?: string | null
           delivery_lat?: number | null
           delivery_lng?: number | null

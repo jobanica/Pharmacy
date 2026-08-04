@@ -22,6 +22,7 @@ export default async function StorePage({
       brandColor={store.brand.brandColor}
       branches={store.branches}
       products={store.products}
+      storefront={store.storefront}
     />
   );
 }

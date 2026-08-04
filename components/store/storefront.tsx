@@ -26,6 +26,7 @@ import { DeliveryMap } from "@/components/store/delivery-map";
 import { OrderTracker } from "@/components/store/order-tracker";
 import { placeOrder } from "@/lib/orders/actions";
 import { formatCentavos } from "@/lib/money";
+import { hasOnlinePayment, type Storefront } from "@/lib/storefront/settings";
 
 type Product = {
   id: string;
@@ -47,6 +48,7 @@ export function Storefront({
   brandColor,
   branches,
   products,
+  storefront,
 }: {
   orgSlug: string;
   storeName: string;
@@ -54,6 +56,7 @@ export function Storefront({
   brandColor?: string | null;
   branches: Branch[];
   products: Product[];
+  storefront: Storefront;
 }) {
   const [cart, setCart] = React.useState<Map<string, number>>(new Map());
   const [search, setSearch] = React.useState("");
@@ -94,6 +97,8 @@ export function Storefront({
     0,
   );
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
+  const deliveryFee = fulfillment === "delivery" ? storefront.deliveryFeeCentavos : 0;
+  const total = subtotal + deliveryFee;
 
   function setQty(id: string, qty: number) {
     setCart((prev) => {
@@ -311,6 +316,9 @@ export function Storefront({
             <CheckoutPanel
               lines={lines}
               subtotal={subtotal}
+              deliveryFee={deliveryFee}
+              total={total}
+              storefront={storefront}
               itemCount={itemCount}
               branches={branches}
               branchId={branchId}
@@ -349,7 +357,7 @@ export function Storefront({
               <ShoppingCart className="size-5" />
               View order · {itemCount} item{itemCount !== 1 ? "s" : ""}
             </span>
-            <span>{formatCentavos(subtotal)}</span>
+            <span>{formatCentavos(total)}</span>
           </button>
         </div>
       )}
@@ -371,6 +379,9 @@ export function Storefront({
             <CheckoutPanel
               lines={lines}
               subtotal={subtotal}
+              deliveryFee={deliveryFee}
+              total={total}
+              storefront={storefront}
               itemCount={itemCount}
               branches={branches}
               branchId={branchId}
@@ -539,6 +550,9 @@ function ProductCard({
 type CheckoutPanelProps = {
   lines: { product: Product; qty: number }[];
   subtotal: number;
+  deliveryFee: number;
+  total: number;
+  storefront: Storefront;
   itemCount: number;
   branches: Branch[];
   branchId: string;
@@ -566,6 +580,9 @@ type CheckoutPanelProps = {
 function CheckoutPanel({
   lines,
   subtotal,
+  deliveryFee,
+  total,
+  storefront,
   itemCount,
   branches,
   branchId,
@@ -638,9 +655,19 @@ function CheckoutPanel({
                 </div>
               </div>
             ))}
-            <div className="mt-1 flex justify-between border-t border-gray-200 pt-2 text-sm font-bold text-gray-900">
+            <div className="mt-1 flex justify-between border-t border-gray-200 pt-2 text-sm text-gray-700">
               <span>Subtotal</span>
               <span>{formatCentavos(subtotal)}</span>
+            </div>
+            {fulfillment === "delivery" ? (
+              <div className="flex justify-between text-sm text-gray-700">
+                <span>Delivery fee</span>
+                <span>{deliveryFee > 0 ? formatCentavos(deliveryFee) : "Free"}</span>
+              </div>
+            ) : null}
+            <div className="flex justify-between text-sm font-bold text-gray-900">
+              <span>Total</span>
+              <span>{formatCentavos(total)}</span>
             </div>
           </div>
         )}
@@ -745,9 +772,37 @@ function CheckoutPanel({
           />
         </div>
         {payment === "online" ? (
-          <p className="text-xs text-gray-400">
-            We&apos;ll send a secure payment link to your phone after we confirm your order.
-          </p>
+          hasOnlinePayment(storefront) ? (
+            <div className="grid gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <p className="text-xs text-gray-500">
+                Pay to any of the accounts below, then send your proof of payment when we confirm.
+              </p>
+              {storefront.gcash.enabled ? (
+                <PayLine label="GCash" name={storefront.gcash.name} number={storefront.gcash.number} />
+              ) : null}
+              {storefront.maya.enabled ? (
+                <PayLine label="Maya" name={storefront.maya.name} number={storefront.maya.number} />
+              ) : null}
+              {storefront.bank.enabled ? (
+                <PayLine
+                  label={storefront.bank.bankName || "Bank"}
+                  name={storefront.bank.name}
+                  number={storefront.bank.number}
+                />
+              ) : null}
+              {storefront.qrUrl ? (
+                <div className="flex flex-col items-center gap-1 pt-1">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={storefront.qrUrl} alt="Payment QR" className="h-40 w-40 rounded-lg border object-contain" />
+                  <span className="text-xs text-gray-500">Scan to pay</span>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">
+              We&apos;ll contact you with payment details after we confirm your order.
+            </p>
+          )
         ) : null}
       </div>
 
@@ -772,8 +827,20 @@ function CheckoutPanel({
         {pending ? <Loader2 className="size-4 animate-spin" /> : null}
         {lines.length === 0
           ? "Add items to place order"
-          : `Place order · ${formatCentavos(subtotal)}`}
+          : `Place order · ${formatCentavos(total)}`}
       </button>
+    </div>
+  );
+}
+
+function PayLine({ label, name, number }: { label: string; name: string; number: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="font-semibold text-gray-900">{label}</span>
+      <span className="text-right text-gray-700">
+        {number}
+        {name ? <span className="block text-xs text-gray-500">{name}</span> : null}
+      </span>
     </div>
   );
 }

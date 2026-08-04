@@ -28,6 +28,7 @@ export default async function CustomDomainStorePage() {
       brandColor={store.brand.brandColor}
       branches={store.branches}
       products={store.products}
+      storefront={store.storefront}
     />
   );
 }
