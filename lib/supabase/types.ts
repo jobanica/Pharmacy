@@ -2163,6 +2163,10 @@ export type Database = {
         Args: { p_batch: string; p_new_quantity: number; p_reason?: string }
         Returns: undefined
       }
+      update_transfer_item_qty: {
+        Args: { p_item: string; p_new_qty: number }
+        Returns: undefined
+      }
       open_shift: {
         Args: { p_branch: string; p_opening_cash?: number }
         Returns: string

@@ -10,6 +10,7 @@ import { formatCentavos } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { ReceiveTransferButton } from "@/components/inventory/receive-transfer-button";
 import { TransferActions, type TransferCsvRow } from "@/components/inventory/transfer-actions";
+import { TransferItemQty } from "@/components/inventory/transfer-item-qty";
 
 const STATUS_LABEL: Record<string, string> = {
   in_transit: "In Transit",
@@ -51,8 +52,9 @@ export default async function TransferDetailPage({
 
   const { data: items } = await supabase
     .from("stock_transfer_items")
-    .select("product_id, quantity, unit_cost_centavos")
-    .eq("transfer_id", transferId);
+    .select("id, product_id, quantity, unit_cost_centavos")
+    .eq("transfer_id", transferId)
+    .order("id");
 
   const productIds = [...new Set((items ?? []).map((i) => i.product_id))];
   const { data: products } = productIds.length
@@ -140,7 +142,18 @@ export default async function TransferDetailPage({
               return (
                 <tr key={i} className="border-t">
                   <td className="px-3 py-2">{prod?.name ?? it.product_id}</td>
-                  <td className="px-3 py-2 text-right">{it.quantity} {prod?.unit ?? ""}</td>
+                  <td className="px-3 py-2 text-right">
+                    {canEdit ? (
+                      <TransferItemQty
+                        itemId={it.id}
+                        transferId={transferId}
+                        quantity={it.quantity}
+                        unit={prod?.unit ?? ""}
+                      />
+                    ) : (
+                      <>{it.quantity} {prod?.unit ?? ""}</>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right">{formatCentavos(it.unit_cost_centavos)}</td>
                   <td className="px-3 py-2 text-right">{formatCentavos(it.quantity * it.unit_cost_centavos)}</td>
                 </tr>

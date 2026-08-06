@@ -9,6 +9,33 @@ import { can } from "@/lib/auth/roles";
 export type TransferResult = { ok: true; transferId: string } | { error: string };
 export type ReceiveResult = { ok: true } | { error: string };
 
+/**
+ * Edit an in-transit transfer line's quantity. Increasing pulls the extra from
+ * the line's source batch; decreasing returns stock to it. Setting 0 removes
+ * the line. All handled atomically in SQL.
+ */
+export async function updateTransferItemQty(
+  itemId: string,
+  transferId: string,
+  quantity: string,
+): Promise<ReceiveResult> {
+  const ctx = await requireAppContext();
+  if (!can(ctx.role, "manage_catalog")) return { error: "Permission denied" };
+  const n = parseInt(quantity, 10);
+  if (!Number.isFinite(n) || n < 0) return { error: "Enter a valid quantity" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_transfer_item_qty", {
+    p_item: itemId,
+    p_new_qty: n,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/inventory/transfers/${transferId}`);
+  revalidatePath("/inventory/transfers");
+  return { ok: true };
+}
+
 export async function createTransfer(
   toBranchId: string,
   items: { productId: string; quantity: number }[],
