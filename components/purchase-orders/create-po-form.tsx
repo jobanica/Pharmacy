@@ -221,46 +221,6 @@ export function CreatePoForm({
           </div>
         </div>
 
-        {lowStock.length > 0 ? (
-          <div className="grid gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-500">
-              <TriangleAlert className="size-4" />
-              Low in inventory ({suggestions.length} to reorder)
-            </div>
-            {suggestions.length > 0 ? (
-              <div className="grid gap-1.5">
-                {suggestions.map((s) => (
-                  <div
-                    key={s.product_id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2 text-sm"
-                  >
-                    <div>
-                      <span className="font-medium">{s.product_name}</span>
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        {s.on_hand} on hand · reorder at {s.reorder_point} · short{" "}
-                        {Math.max(s.deficit, 1)} {s.unit}
-                      </span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addSuggestion(s)}
-                    >
-                      <Plus className="size-4" />
-                      Add
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                All low-stock items have been added to this order.
-              </p>
-            )}
-          </div>
-        ) : null}
-
         <div className="grid gap-2">
           <Label>Items</Label>
           <Button variant="outline" size="sm" className="w-fit" onClick={addLine}>
@@ -309,6 +269,46 @@ export function CreatePoForm({
             ))}
           </div>
         </div>
+
+        {lowStock.length > 0 ? (
+          <div className="grid gap-2 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-500">
+              <TriangleAlert className="size-4" />
+              Low in inventory ({suggestions.length} to reorder)
+            </div>
+            {suggestions.length > 0 ? (
+              <div className="grid gap-1.5">
+                {suggestions.map((s) => (
+                  <div
+                    key={s.product_id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-background px-3 py-2 text-sm"
+                  >
+                    <div>
+                      <span className="font-medium">{s.product_name}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {s.on_hand} on hand · reorder at {s.reorder_point} · short{" "}
+                        {Math.max(s.deficit, 1)} {s.unit}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => addSuggestion(s)}
+                    >
+                      <Plus className="size-4" />
+                      Add
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                All low-stock items have been added to this order.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         <div className="grid gap-2">
           <Label>Notes</Label>
