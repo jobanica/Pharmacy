@@ -53,6 +53,7 @@ export default async function AdjustmentsPage() {
       .from("stock_writeoffs")
       .select("id, product_name, quantity, unit_cost_centavos, total_cost_centavos, reason, notes, created_at")
       .eq("branch_id", ctx.activeBranchId)
+      .neq("reason", "donated") // donations have their own tab
       .order("created_at", { ascending: false })
       .limit(500),
   ]);

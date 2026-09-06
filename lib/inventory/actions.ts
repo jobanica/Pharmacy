@@ -78,7 +78,7 @@ export async function getProductBatches(productId: string): Promise<BatchOption[
 export async function writeOffStock(
   batchId: string,
   quantity: number | string,
-  reason: "expired" | "damaged" | "other",
+  reason: "expired" | "damaged" | "other" | "donated",
   notes: string,
 ): Promise<WriteOffResult> {
   const g = await guard();

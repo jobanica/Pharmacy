@@ -21,6 +21,7 @@ import {
   ClipboardCheck,
   Printer,
   PackageX,
+  HeartHandshake,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Stock Transfers", href: "/inventory/transfers", icon: ArrowLeftRight, requires: "use_transfers", requiresPlan: "starter" },
   { label: "Stocktake", href: "/inventory/stocktake", icon: ClipboardCheck, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Stock Adjustments", href: "/inventory/adjustments", icon: PackageX, requires: "manage_stock", requiresPlan: "starter" },
+  { label: "Donations", href: "/inventory/donations", icon: HeartHandshake, requires: "manage_stock", requiresPlan: "starter" },
   { label: "Alerts", href: "/alerts", icon: BellRing, requires: "manage_catalog", requiresPlan: "starter" },
   { label: "Prescriptions", href: "/prescriptions", icon: Pill, requires: "create_sale" },
   { label: "Customers", href: "/customers", icon: Star, requires: "create_sale" },
