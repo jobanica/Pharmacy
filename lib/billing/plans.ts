@@ -35,7 +35,7 @@ export const PLANS: Plan[] = [
   {
     id: "starter",
     name: "Starter",
-    priceCentavos: 69900,
+    priceCentavos: 80000,
     interval: "month",
     description: "For a growing independent pharmacy.",
     features: [
