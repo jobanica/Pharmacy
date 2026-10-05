@@ -239,7 +239,7 @@ export default async function LandingPage() {
             </p>
           </div>
 
-          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:mx-auto lg:max-w-3xl">
             {BENEFITS.map((b) => {
               const Icon = b.icon;
               return (

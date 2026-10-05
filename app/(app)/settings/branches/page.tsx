@@ -31,16 +31,16 @@ export default async function SettingsBranchesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            Branch management is a Pro feature
+            Branch management needs the paid plan
           </CardTitle>
           <CardDescription>
-            Upgrade to Pro to add and manage multiple branches, each with its own
-            staff, stock, and reports (₱500/mo per branch beyond the first).
+            Upgrade to the ₱800/mo plan to add and manage multiple branches, each
+            with its own staff, stock, and reports — all included.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button render={<Link href="/settings/billing" />}>
-            Upgrade to Pro
+            Upgrade
           </Button>
         </CardContent>
       </Card>

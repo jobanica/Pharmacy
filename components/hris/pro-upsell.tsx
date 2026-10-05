@@ -10,10 +10,10 @@ export function ProUpsell() {
       <span className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white">
         <Lock className="size-6" />
       </span>
-      <h1 className="mt-4 text-xl font-semibold">Time &amp; Attendance is a Pro feature</h1>
+      <h1 className="mt-4 text-xl font-semibold">Time &amp; Attendance needs the paid plan</h1>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
         Track staff hours with QR clock in/out and selfie verification. Upgrade
-        to Pro to switch it on for your pharmacy.
+        to the ₱800/mo plan to switch it on for your pharmacy.
       </p>
       <ul className="mx-auto mt-5 grid max-w-xs gap-2 text-left text-sm">
         {[

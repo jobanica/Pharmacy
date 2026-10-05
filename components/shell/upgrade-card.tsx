@@ -9,9 +9,9 @@ export function UpgradeCard() {
       <span className="flex size-9 items-center justify-center rounded-xl bg-white/20">
         <Sparkles className="size-5" />
       </span>
-      <p className="mt-3 font-semibold">Go Pro</p>
+      <p className="mt-3 font-semibold">Unlock everything</p>
       <p className="mt-0.5 text-xs text-white/80">
-        Unlock multi-branch reports and priority support.
+        One plan, ₱800/mo — inventory, multi-branch, HRIS, reports &amp; more.
       </p>
       <Link
         href="/settings/billing"

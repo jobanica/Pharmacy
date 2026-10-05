@@ -51,21 +51,9 @@ export const PLANS: Plan[] = [
       "Priority support",
     ],
   },
-  {
-    id: "pro",
-    name: "Pro",
-    priceCentavos: 179900,
-    interval: "month",
-    description: "For multi-branch operations.",
-    features: [
-      "Everything in Starter",
-      "Unlimited AI receipt scans",
-      "Multiple branches (₱500/mo per extra branch)",
-      "HRIS — QR time & attendance",
-      "Advanced reports",
-      "Priority support",
-    ],
-  },
+  // The single paid plan (Starter, ₱800) now includes everything, so the former
+  // "Pro" tier has been removed. 'pro' remains a valid plan id for any
+  // organization still stored on it (it keeps full access).
 ];
 
 export function getPlan(id: string): Plan | undefined {

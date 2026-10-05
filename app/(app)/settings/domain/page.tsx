@@ -27,15 +27,15 @@ export default async function SettingsDomainPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="size-5 text-primary" />
-            Custom domains are a Pro feature
+            Custom domains need the paid plan
           </CardTitle>
           <CardDescription>
-            Upgrade to Pro to put your online ordering storefront on your own
-            domain (e.g. shop.mypharmacy.ph) instead of a shared link.
+            Upgrade to the ₱800/mo plan to put your online ordering storefront on
+            your own domain (e.g. shop.mypharmacy.ph) instead of a shared link.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button render={<Link href="/settings/billing" />}>Upgrade to Pro</Button>
+          <Button render={<Link href="/settings/billing" />}>Upgrade</Button>
         </CardContent>
       </Card>
     );
