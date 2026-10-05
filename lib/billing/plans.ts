@@ -37,15 +37,18 @@ export const PLANS: Plan[] = [
     name: "Starter",
     priceCentavos: 80000,
     interval: "month",
-    description: "For a growing independent pharmacy.",
+    description: "Everything the system offers, one flat monthly price.",
     features: [
       "Everything in Free",
       "Online ordering website (storefront)",
-      "Inventory management",
-      "Expiry & low-stock alerts",
-      "Purchase orders",
-      "AI receipt scanning (1× per week)",
-      "Sales dashboard",
+      "Inventory, expiry & low-stock alerts",
+      "Purchase orders & stock transfers",
+      "Unlimited AI receipt scanning",
+      "Multiple branches",
+      "HRIS — QR time & attendance, payroll",
+      "Advanced sales dashboard & reports",
+      "Custom domain",
+      "Priority support",
     ],
   },
   {
@@ -69,9 +72,13 @@ export function getPlan(id: string): Plan | undefined {
   return PLANS.find((p) => p.id === id);
 }
 
-/** Pro-only gated features (HRIS, unlimited branches, unlimited AI scans). */
+/**
+ * Full-access gate (HRIS, unlimited branches, unlimited AI scans, custom domain).
+ * Every paid plan now includes everything, so the ₱800 Starter plan unlocks it
+ * all — not just "pro".
+ */
 export function isProPlan(plan: string): boolean {
-  return plan === "pro";
+  return plan === "starter" || plan === "pro";
 }
 
 /** Starter-and-above: inventory, alerts, purchase orders, limited AI scan. */
