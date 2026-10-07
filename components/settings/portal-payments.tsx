@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { formatCentavos } from "@/lib/money";
 import { submitReceiptAction, requestContractLinkAction } from "@/lib/portal/actions";
 import { nextBillingMonth } from "@/lib/agent-kit/billing";
+import { suspendsAt } from "@/lib/portal/grace";
 import type { ManualPayment } from "@/lib/supabase/types";
 
 const STATUS_LABEL: Record<ManualPayment["status"], string> = {
@@ -150,7 +151,19 @@ export function PortalPayments({
                     dateStyle: "long",
                     timeZone: "Asia/Manila",
                   })}
-                  . Send a receipt to bring it up to date.
+                  .{" "}
+                  {suspendsAt(new Date(paidUntil)) > new Date() ? (
+                    <>
+                      Send a receipt before{" "}
+                      {suspendsAt(new Date(paidUntil)).toLocaleDateString("en-PH", {
+                        dateStyle: "long",
+                        timeZone: "Asia/Manila",
+                      })}{" "}
+                      to keep your account open.
+                    </>
+                  ) : (
+                    <>Send a receipt to reopen your account.</>
+                  )}
                 </span>
               )}
             </p>

@@ -24,6 +24,7 @@ import {
   type AgentPortalConfig,
 } from "@/lib/agent-kit/client";
 import { nextPerCustomer } from "@/lib/portal/ordering";
+import { GRACE_DAYS, suspendsAt } from "@/lib/portal/grace";
 import { coverageEnd, nextBillingMonth, parseReceiptForm } from "@/lib/agent-kit/billing";
 
 /**
@@ -582,4 +583,36 @@ test("entitlement follows live coverage, and a lapse does not suspend", () => {
     false,
     "a confirmed-payment callback must never suspend an account",
   );
+});
+
+// ---------------------------------------------------------------------------
+// 13. Seven-day grace before suspension — and the sweep can only ever reach
+//     accounts that went through the agent-portal billing flow.
+// ---------------------------------------------------------------------------
+test("suspension waits out the grace period and cannot touch other accounts", () => {
+  const lapsed = new Date("2026-10-01T00:00:00+08:00");
+  assert.equal(GRACE_DAYS, 7);
+  assert.equal(
+    suspendsAt(lapsed).toISOString(),
+    new Date("2026-10-08T00:00:00+08:00").toISOString(),
+  );
+
+  // The rule the sweep applies: suspend only once now() is past the grace end.
+  const due = (now: Date) => now > suspendsAt(lapsed);
+  assert.equal(due(new Date("2026-10-07T23:59:00+08:00")), false, "day 6 is still open");
+  assert.equal(due(new Date("2026-10-08T00:00:01+08:00")), true, "day 7 suspends");
+
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260711030000_suspend_lapsed.sql", import.meta.url),
+    "utf8",
+  );
+  // Scope: an account with no agent code has no coverage and must be invisible
+  // to the sweep, and a null coverage end must never be treated as lapsed.
+  assert.match(sql, /o\.agent_code is not null/);
+  assert.match(sql, /c\.paid_until is not null/);
+  // Suspending must go through set_organization_status so the status change and
+  // the customer.cancelled event are written together.
+  assert.match(sql, /set_organization_status\(v_org, 'suspended'/);
+  // And being let back in must tell the portal too.
+  assert.match(sql, /set_organization_status\(p_org, 'active'\)/);
 });

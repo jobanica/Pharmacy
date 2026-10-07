@@ -2314,6 +2314,7 @@ export type Database = {
       }
       paid_coverage_end: { Args: { p_org: string }; Returns: string | null }
       apply_paid_coverage: { Args: { p_org: string }; Returns: undefined }
+      suspend_lapsed_accounts: { Args: { p_grace_days?: number }; Returns: number }
       expire_trials: { Args: never; Returns: undefined }
       import_products: { Args: { p_branch: string; p_rows: Json }; Returns: Json }
       merge_duplicate_products: { Args: never; Returns: Json }
