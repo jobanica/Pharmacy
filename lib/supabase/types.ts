@@ -2312,6 +2312,8 @@ export type Database = {
         Args: { p_event_id: string; p_type: string; p_payload: Json }
         Returns: Json
       }
+      paid_coverage_end: { Args: { p_org: string }; Returns: string | null }
+      apply_paid_coverage: { Args: { p_org: string }; Returns: undefined }
       expire_trials: { Args: never; Returns: undefined }
       import_products: { Args: { p_branch: string; p_rows: Json }; Returns: Json }
       merge_duplicate_products: { Args: never; Returns: Json }

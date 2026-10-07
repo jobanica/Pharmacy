@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 
 import {
   canonicalString,
@@ -527,4 +528,58 @@ test("machine endpoints bypass the proxy's auth gate", async () => {
   );
   // The gate itself has to consult the list, not just declare it.
   assert.match(source, /MACHINE_PATHS\.some/);
+});
+
+// ---------------------------------------------------------------------------
+// 12. Confirmed payments activate and extend — and a lapse never locks anyone
+//     out. The authority is apply_paid_coverage() in Postgres; this pins the
+//     rule the SQL implements, so a change to one without the other is loud.
+// ---------------------------------------------------------------------------
+test("entitlement follows live coverage, and a lapse does not suspend", () => {
+  // Mirrors apply_paid_coverage(): entitled when coverage is live, or when the
+  // pharmacy is newly activated and has not started monthly billing yet.
+  function entitlement(opts: { activationConfirmed: boolean; paidUntil: Date | null }, now: Date) {
+    const covered = opts.paidUntil !== null && opts.paidUntil > now;
+    const entitled = covered || (opts.paidUntil === null && opts.activationConfirmed);
+    return { entitled, status: entitled ? "active" : "past_due" };
+  }
+
+  const now = new Date("2026-10-07T12:00:00Z");
+  const future = new Date("2027-01-01T00:00:00+08:00");
+  const past = new Date("2026-02-01T00:00:00+08:00");
+
+  // Just activated, first month not yet paid — they are in.
+  assert.deepEqual(entitlement({ activationConfirmed: true, paidUntil: null }, now), {
+    entitled: true,
+    status: "active",
+  });
+  // Paid through January.
+  assert.deepEqual(entitlement({ activationConfirmed: true, paidUntil: future }, now), {
+    entitled: true,
+    status: "active",
+  });
+  // Coverage ran out in February. Having paid the one-time activation fee back
+  // then is not a paid-up subscription today.
+  assert.deepEqual(entitlement({ activationConfirmed: true, paidUntil: past }, now), {
+    entitled: false,
+    status: "past_due",
+  });
+  // Never paid anything.
+  assert.deepEqual(entitlement({ activationConfirmed: false, paidUntil: null }, now), {
+    entitled: false,
+    status: "past_due",
+  });
+
+  // The SQL must only ever lift a suspension, never impose one: there is no
+  // path from a lapse to status = 'suspended'.
+  const sql = readFileSync(
+    new URL("../supabase/migrations/20260711020000_portal_activation.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(sql, /when status = 'suspended' and v_entitled then 'active'/);
+  assert.equal(
+    /then\s+'suspended'/.test(sql),
+    false,
+    "a confirmed-payment callback must never suspend an account",
+  );
 });

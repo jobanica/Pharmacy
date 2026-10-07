@@ -132,6 +132,29 @@ export function PortalPayments({
             number is required — it is how we match your payment, and each one
             can only be submitted once.
           </CardDescription>
+          {paidUntil ? (
+            <p className="text-sm">
+              {new Date(paidUntil) > new Date() ? (
+                <span className="text-emerald-400">
+                  Paid up to{" "}
+                  {new Date(paidUntil).toLocaleDateString("en-PH", {
+                    dateStyle: "long",
+                    timeZone: "Asia/Manila",
+                  })}
+                  .
+                </span>
+              ) : (
+                <span className="text-amber-400">
+                  Your subscription lapsed on{" "}
+                  {new Date(paidUntil).toLocaleDateString("en-PH", {
+                    dateStyle: "long",
+                    timeZone: "Asia/Manila",
+                  })}
+                  . Send a receipt to bring it up to date.
+                </span>
+              )}
+            </p>
+          ) : null}
         </CardHeader>
         <CardContent>
           {!signed ? (
