@@ -873,6 +873,12 @@ export type Database = {
           settings: Json
           slug: string
           status: string
+          // Agent portal. Null for every account that signed up without a
+          // referral code; set once at signup and never edited afterwards.
+          agent_code: string | null
+          contract_status: "unsigned" | "signed"
+          contract_signed_at: string | null
+          contract_minimum_term_ends_at: string | null
         }
         Insert: {
           created_at?: string
@@ -883,6 +889,10 @@ export type Database = {
           settings?: Json
           slug: string
           status?: string
+          agent_code?: string | null
+          contract_status?: "unsigned" | "signed"
+          contract_signed_at?: string | null
+          contract_minimum_term_ends_at?: string | null
         }
         Update: {
           created_at?: string
@@ -893,6 +903,133 @@ export type Database = {
           settings?: Json
           slug?: string
           status?: string
+          agent_code?: string | null
+          contract_status?: "unsigned" | "signed"
+          contract_signed_at?: string | null
+          contract_minimum_term_ends_at?: string | null
+        }
+        Relationships: []
+      }
+      product_event_outbox: {
+        Row: {
+          id: string
+          organization_id: string | null
+          event_id: string
+          type: string
+          payload: Json
+          status: "pending" | "sent" | "failed"
+          attempts: number
+          next_attempt_at: string
+          last_status: number | null
+          last_error: string | null
+          portal_status: string | null
+          created_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id?: string | null
+          event_id: string
+          type: string
+          payload: Json
+          status?: "pending" | "sent" | "failed"
+          attempts?: number
+          next_attempt_at?: string
+          last_status?: number | null
+          last_error?: string | null
+          portal_status?: string | null
+          created_at?: string
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          event_id?: string
+          type?: string
+          payload?: Json
+          status?: "pending" | "sent" | "failed"
+          attempts?: number
+          next_attempt_at?: string
+          last_status?: number | null
+          last_error?: string | null
+          portal_status?: string | null
+          created_at?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
+      product_callback_inbox: {
+        Row: {
+          event_id: string
+          type: string
+          payload: Json
+          received_at: string
+          outcome: string | null
+        }
+        Insert: {
+          event_id: string
+          type: string
+          payload: Json
+          received_at?: string
+          outcome?: string | null
+        }
+        Update: {
+          event_id?: string
+          type?: string
+          payload?: Json
+          received_at?: string
+          outcome?: string | null
+        }
+        Relationships: []
+      }
+      subscription_manual_payments: {
+        Row: {
+          id: string
+          organization_id: string
+          type: "activation" | "monthly"
+          months_covered: number
+          billing_month_start: string | null
+          amount_centavos: number
+          bank_reference: string
+          receipt_path: string | null
+          status: "submitted" | "confirmed" | "rejected" | "reversed"
+          reason: string | null
+          event_id: string | null
+          submitted_by: string | null
+          submitted_at: string
+          decided_at: string | null
+        }
+        Insert: {
+          id?: string
+          organization_id: string
+          type: "activation" | "monthly"
+          months_covered?: number
+          billing_month_start?: string | null
+          amount_centavos: number
+          bank_reference: string
+          receipt_path?: string | null
+          status?: "submitted" | "confirmed" | "rejected" | "reversed"
+          reason?: string | null
+          event_id?: string | null
+          submitted_by?: string | null
+          submitted_at?: string
+          decided_at?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          type?: "activation" | "monthly"
+          months_covered?: number
+          billing_month_start?: string | null
+          amount_centavos?: number
+          bank_reference?: string
+          receipt_path?: string | null
+          status?: "submitted" | "confirmed" | "rejected" | "reversed"
+          reason?: string | null
+          event_id?: string | null
+          submitted_by?: string | null
+          submitted_at?: string
+          decided_at?: string | null
         }
         Relationships: []
       }
@@ -2151,6 +2288,30 @@ export type Database = {
     }
     Functions: {
       accept_invitation: { Args: { invite_token: string }; Returns: string }
+      enqueue_customer_signed_up: { Args: { p_org: string }; Returns: undefined }
+      enqueue_product_event: {
+        Args: { p_org: string; p_type: string; p_data: Json }
+        Returns: undefined
+      }
+      submit_manual_payment: {
+        Args: {
+          p_type: string
+          p_months: number | null
+          p_month_start: string | null
+          p_amount: number
+          p_bank_ref: string
+          p_receipt_path?: string | null
+        }
+        Returns: Json
+      }
+      set_organization_status: {
+        Args: { p_org: string; p_status: string; p_reason?: string | null }
+        Returns: undefined
+      }
+      apply_portal_callback: {
+        Args: { p_event_id: string; p_type: string; p_payload: Json }
+        Returns: Json
+      }
       expire_trials: { Args: never; Returns: undefined }
       import_products: { Args: { p_branch: string; p_rows: Json }; Returns: Json }
       merge_duplicate_products: { Args: never; Returns: Json }
@@ -2537,3 +2698,6 @@ export type LoyaltyKind = Database["public"]["Enums"]["loyalty_kind"];
 export type OrderStatus = Database["public"]["Enums"]["order_status"];
 export type FulfillmentType = Database["public"]["Enums"]["fulfillment_type"];
 export type OrderPayment = Database["public"]["Enums"]["order_payment"];
+export type ManualPayment =
+  Database["public"]["Tables"]["subscription_manual_payments"]["Row"];
+export type OutboxEvent = Database["public"]["Tables"]["product_event_outbox"]["Row"];

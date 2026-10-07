@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { setOrgPlan, setOrgStatus } from "@/lib/admin/actions";
+import { setOrgAgentCode, setOrgPlan, setOrgStatus } from "@/lib/admin/actions";
 import { formatCentavos } from "@/lib/money";
 
 export type Subscriber = {
@@ -30,6 +30,8 @@ export type Subscriber = {
   sales: number;
   revenueCentavos: number;
   monthlyPriceCentavos: number;
+  agentCode: string | null;
+  contractStatus: "unsigned" | "signed";
 };
 
 const PLANS = ["free", "starter", "pro"] as const;
@@ -54,6 +56,24 @@ export function SubscribersTable({ subscribers }: { subscribers: Subscriber[] })
       if ("error" in res) toast.error(res.error);
       else {
         toast.success("Plan updated");
+        router.refresh();
+      }
+    });
+  }
+
+  /**
+   * Attach a referring agent to a pharmacy that has none. Add-only: a code
+   * that is already set cannot be changed, so there is no edit affordance.
+   */
+  function attachAgent(orgId: string) {
+    const code = window.prompt("Agent code for this pharmacy");
+    if (!code?.trim()) return;
+    setBusy(orgId);
+    setOrgAgentCode({ orgId, code }).then((res) => {
+      setBusy(null);
+      if ("error" in res) toast.error(res.error);
+      else {
+        toast.success("Agent code set — the portal will be notified");
         router.refresh();
       }
     });
@@ -87,6 +107,7 @@ export function SubscribersTable({ subscribers }: { subscribers: Subscriber[] })
               <TableHead>Subscriber</TableHead>
               <TableHead>Plan</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Agent</TableHead>
               <TableHead className="text-right">Members</TableHead>
               <TableHead className="text-right">Branches</TableHead>
               <TableHead className="text-right">Sales</TableHead>
@@ -130,6 +151,26 @@ export function SubscribersTable({ subscribers }: { subscribers: Subscriber[] })
                     <Badge variant="outline" className="text-destructive capitalize">{s.status}</Badge>
                   )}
                 </TableCell>
+                <TableCell>
+                  {s.agentCode ? (
+                    <>
+                      <div className="font-mono text-xs">{s.agentCode}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        agreement {s.contractStatus}
+                      </div>
+                    </>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={busy === s.id}
+                      className="h-7 px-2 text-xs text-muted-foreground"
+                      onClick={() => attachAgent(s.id)}
+                    >
+                      Set code
+                    </Button>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">{s.members}</TableCell>
                 <TableCell className="text-right">{s.branches}</TableCell>
                 <TableCell className="text-right">{s.sales}</TableCell>
@@ -156,7 +197,7 @@ export function SubscribersTable({ subscribers }: { subscribers: Subscriber[] })
             ))}
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                   No subscribers found.
                 </TableCell>
               </TableRow>

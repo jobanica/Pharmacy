@@ -5,6 +5,8 @@ import { z } from "zod";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { requirePlatformAdmin } from "@/lib/admin/auth";
+import { normalizeReferralCode } from "@/lib/agent-kit/ref";
+import { requeueEvent } from "@/lib/portal/outbox";
 
 export type AdminResult = { ok: true } | { error: string };
 
@@ -109,6 +111,14 @@ const statusSchema = z.object({
   status: z.enum(["active", "suspended"]),
 });
 
+/**
+ * Suspend or reactivate a subscriber.
+ *
+ * Goes through set_organization_status() so the status change and the matching
+ * customer.cancelled / customer.reactivated event are written in one
+ * transaction. For a pharmacy with no agent code the function queues nothing,
+ * so this behaves exactly as it always has.
+ */
 export async function setOrgStatus(input: z.input<typeof statusSchema>): Promise<AdminResult> {
   await requirePlatformAdmin();
   const parsed = statusSchema.safeParse(input);
@@ -116,10 +126,79 @@ export async function setOrgStatus(input: z.input<typeof statusSchema>): Promise
   const { orgId, status } = parsed.data;
 
   const db = createServiceClient();
-  const { error } = await db.from("organizations").update({ status }).eq("id", orgId);
+  const { error } = await db.rpc("set_organization_status", {
+    p_org: orgId,
+    p_status: status,
+  });
   if (error) return { error: error.message };
 
   revalidatePath("/admin");
+  return { ok: true };
+}
+
+const agentCodeSchema = z.object({
+  orgId: z.string().uuid(),
+  code: z.string().trim().min(1, "Enter the agent's code"),
+});
+
+/**
+ * Attach a referring agent to a pharmacy that signed up without a code —
+ * someone who was referred but typed nothing, or was signed up by hand.
+ *
+ * Only ever an addition. The organizations_agent_code_guard trigger refuses to
+ * change a code that is already set, and setting one from null queues
+ * customer.signed_up in the same transaction, so the portal learns about the
+ * customer as if they had arrived with the code.
+ */
+export async function setOrgAgentCode(
+  input: z.input<typeof agentCodeSchema>,
+): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  const parsed = agentCodeSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const code = normalizeReferralCode(parsed.data.code);
+  if (!code) {
+    return { error: "A code is 4–20 letters or digits." };
+  }
+
+  const db = createServiceClient();
+  const { data: org } = await db
+    .from("organizations")
+    .select("agent_code")
+    .eq("id", parsed.data.orgId)
+    .maybeSingle();
+  if (!org) return { error: "That pharmacy no longer exists." };
+  if (org.agent_code) {
+    return { error: `This pharmacy is already attributed to ${org.agent_code}.` };
+  }
+
+  // The portal requires the owner's mobile number on a signup. Checked here so
+  // the admin gets a sentence they can act on, rather than an event that sits
+  // in the failed queue because a field was empty.
+  const { data: owner } = await db
+    .from("memberships")
+    .select("profiles(phone)")
+    .eq("organization_id", parsed.data.orgId)
+    .eq("role", "owner")
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  const phone = (owner as { profiles: { phone: string | null } | null } | null)?.profiles?.phone;
+  if (!phone?.trim()) {
+    return {
+      error:
+        "Add the owner's mobile number to their profile first — the agent portal needs it to record the referral.",
+    };
+  }
+
+  const { error } = await db
+    .from("organizations")
+    .update({ agent_code: code })
+    .eq("id", parsed.data.orgId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/subscriptions");
   return { ok: true };
 }
 
@@ -217,4 +296,18 @@ export async function createAccount(
     orgId: org.id,
     setupLink: (linkData as { properties?: { action_link?: string } }).properties?.action_link ?? appUrl,
   };
+}
+
+/**
+ * Put a failed portal event back in the queue (the "Retry" button on
+ * /admin/agent-portal). Clears the backoff so the next cron tick sends it.
+ */
+export async function retryPortalEvent(id: string): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  const parsed = z.string().uuid().safeParse(id);
+  if (!parsed.success) return { error: "Unknown event" };
+
+  await requeueEvent(parsed.data);
+  revalidatePath("/admin/agent-portal");
+  return { ok: true };
 }

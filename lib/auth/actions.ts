@@ -11,13 +11,22 @@ import {
   acceptInviteSchema,
 } from "@/lib/validation/auth";
 import { ACTIVE_BRANCH_COOKIE } from "@/lib/auth/session";
+import { lookupAgentCode } from "@/lib/agent-kit";
+import { REF_COOKIE } from "@/lib/agent-kit/ref";
+import { portalConfig } from "@/lib/portal/config";
 
 export type ActionState = { error: string } | null;
 
 /**
  * Self-serve sign-up. The `org_name`/`branch_name` metadata triggers
  * handle_new_user() in Postgres to create the org + first branch + owner
- * membership atomically.
+ * membership atomically — and, when an `agent_code` is present, to queue the
+ * customer.signed_up event in that same transaction.
+ *
+ * The referral code is checked against the agent portal first, but only to
+ * decide whether to keep it. A portal that is down, slow or not configured
+ * yet reads as "can't tell", the code is kept as typed, and the signup goes
+ * through: creating the account always wins over attributing it.
  */
 export async function signUpAction(
   _prev: ActionState,
@@ -29,10 +38,14 @@ export async function signUpAction(
     branchName: formData.get("branchName") || undefined,
     email: formData.get("email"),
     password: formData.get("password"),
+    referralCode: formData.get("referralCode") || undefined,
+    phone: formData.get("phone") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
   }
+
+  const agentCode = await resolveReferralCode(parsed.data.referralCode);
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
@@ -43,13 +56,39 @@ export async function signUpAction(
         full_name: parsed.data.fullName,
         org_name: parsed.data.organizationName,
         branch_name: parsed.data.branchName ?? "Main Branch",
+        ...(parsed.data.phone ? { phone: parsed.data.phone } : {}),
+        ...(agentCode ? { agent_code: agentCode } : {}),
       },
     },
   });
   if (error) return { error: error.message };
 
+  // The code has been recorded on the organization; the cookie has done its job.
+  if (agentCode) {
+    const cookieStore = await cookies();
+    cookieStore.delete(REF_COOKIE);
+  }
+
   revalidatePath("/", "layout");
   redirect("/dashboard");
+}
+
+/**
+ * Which code (if any) to store on the new organization.
+ *
+ * A code the portal positively says is not an active agent's is dropped — it
+ * is a typo, and storing it would attribute the customer to nobody while
+ * being impossible to correct later. Everything else (no answer, no portal
+ * configured, a network error) keeps the code: the portal is the authority on
+ * whether to pay for it, and it can be reviewed there.
+ */
+async function resolveReferralCode(code: string | null): Promise<string | null> {
+  if (!code) return null;
+  const config = portalConfig();
+  if (!config) return code;
+  const lookup = await lookupAgentCode(config, code);
+  if (lookup && (!lookup.valid || !lookup.active)) return null;
+  return code;
 }
 
 export async function signInAction(

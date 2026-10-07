@@ -19,6 +19,9 @@ export type SubscriberRow = {
   sales: number;
   revenueCentavos: number;
   monthlyPriceCentavos: number;
+  /** Agent portal: the referring agent's code, null if nobody referred them. */
+  agentCode: string | null;
+  contractStatus: "unsigned" | "signed";
 };
 
 export type PlatformStats = {
@@ -41,7 +44,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
     await Promise.all([
       db
         .from("organizations")
-        .select("id, name, slug, plan, status, created_at")
+        .select("id, name, slug, plan, status, created_at, agent_code, contract_status")
         .order("created_at", { ascending: false }),
       db.from("memberships").select("organization_id").eq("status", "active"),
       db.from("branches").select("organization_id").eq("is_active", true),
@@ -77,6 +80,8 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       sales: salesCount.get(o.id) ?? 0,
       revenueCentavos: revenue.get(o.id) ?? 0,
       monthlyPriceCentavos: price,
+      agentCode: o.agent_code,
+      contractStatus: o.contract_status,
     };
   });
 
