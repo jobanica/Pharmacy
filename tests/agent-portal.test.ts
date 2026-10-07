@@ -510,7 +510,7 @@ test("a receipt needs a bank reference, and coverage counts confirmed months onc
 // ---------------------------------------------------------------------------
 test("machine endpoints bypass the proxy's auth gate", async () => {
   const source = await readFile(new URL("../lib/supabase/middleware.ts", import.meta.url), "utf8");
-  const [, machine] = source.match(/const MACHINE_PATHS = \[([^\]]+)\]/s) ?? [];
+  const [, machine] = source.match(/const MACHINE_PATHS = \[([^\]]+)\]/) ?? [];
   assert.ok(machine, "MACHINE_PATHS must exist in the proxy's session helper");
   const paths = [...machine.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 
