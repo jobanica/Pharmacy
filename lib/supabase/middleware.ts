@@ -16,6 +16,19 @@ import type { Database } from "./types";
 
 const PUBLIC_PATHS = ["/sign-in", "/sign-up", "/accept-invite", "/auth", "/store", "/admin/login", "/forgot-password", "/reset-password"];
 
+/**
+ * Endpoints called by machines, not browsers: the agent portal's signed
+ * callbacks, Vercel's cron invocations and the payment webhook.
+ *
+ * They must skip the coarse auth gate below. There is no session on these
+ * requests and never will be, so redirecting them to /sign-in would silently
+ * swallow every callback and every scheduled run. Each one authenticates
+ * itself instead — a signature over the raw body, or a bearer token.
+ *
+ * Note this is only about the redirect. Other /api routes stay gated.
+ */
+const MACHINE_PATHS = ["/api/portal", "/api/cron", "/api/webhooks"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -49,7 +62,8 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname === "/" ||
-    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+    PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ||
+    MACHINE_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

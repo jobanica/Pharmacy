@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import {
   canonicalString,
@@ -498,4 +499,32 @@ test("a receipt needs a bank reference, and coverage counts confirmed months onc
     nextBillingMonth(new Date("2027-02-01T00:00:00+08:00"), new Date("2026-10-07T12:00:00Z")),
     "2027-02",
   );
+});
+
+// ---------------------------------------------------------------------------
+// 11. The portal's callback and the cron worker must not be sent to /sign-in.
+//
+//     They carry no session and never will. This was a live bug: the proxy's
+//     coarse auth gate matched /api/* and 307'd every callback to the sign-in
+//     page, so nothing reached the handler.
+// ---------------------------------------------------------------------------
+test("machine endpoints bypass the proxy's auth gate", async () => {
+  const source = await readFile(new URL("../lib/supabase/middleware.ts", import.meta.url), "utf8");
+  const [, machine] = source.match(/const MACHINE_PATHS = \[([^\]]+)\]/s) ?? [];
+  assert.ok(machine, "MACHINE_PATHS must exist in the proxy's session helper");
+  const paths = [...machine.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+
+  for (const endpoint of ["/api/portal/callback", "/api/cron/portal-outbox"]) {
+    assert.ok(
+      paths.some((p) => endpoint === p || endpoint.startsWith(`${p}/`)),
+      `${endpoint} would be redirected to /sign-in`,
+    );
+  }
+  // A browser route must NOT be opened up by the same list.
+  assert.equal(
+    paths.some((p) => "/dashboard" === p || "/dashboard".startsWith(`${p}/`)),
+    false,
+  );
+  // The gate itself has to consult the list, not just declare it.
+  assert.match(source, /MACHINE_PATHS\.some/);
 });
