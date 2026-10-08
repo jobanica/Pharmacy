@@ -1,0 +1,25 @@
+-- ============================================================================
+-- Where subscribers send their activation and monthly payments.
+--
+-- The platform's own collection details — a payment QR plus GCash / Maya /
+-- bank account numbers — shown to a referred pharmacy once it has signed the
+-- service agreement, so "pay by bank transfer" actually says where to.
+--
+-- Platform-wide, not per-pharmacy: this is money coming IN to Reseta. Not to
+-- be confused with organizations.settings->storefront, which holds each
+-- pharmacy's own QR for taking money from its customers.
+--
+-- Same jsonb shape as the storefront block so one parser serves both:
+--   {
+--     "qr_path": "platform/collection-qr-1234.png",
+--     "gcash":   { "enabled": true, "name": "...", "number": "..." },
+--     "maya":    { "enabled": false, "name": "", "number": "" },
+--     "bank":    { "enabled": true, "bank_name": "...", "name": "...", "number": "..." },
+--     "note":    "free text shown under the QR"
+--   }
+--
+-- Nothing secret lives here: it is printed on a page for subscribers to read.
+-- The Xendit keys in the same row stay service-role only.
+-- ============================================================================
+alter table public.platform_settings
+  add column if not exists payment_details jsonb not null default '{}'::jsonb;

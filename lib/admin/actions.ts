@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { createServiceClient } from "@/lib/supabase/service";
+import type { Json } from "@/lib/supabase/types";
 import { requirePlatformAdmin } from "@/lib/admin/auth";
 import { normalizeReferralCode } from "@/lib/agent-kit/ref";
 import { requeueEvent } from "@/lib/portal/outbox";
@@ -309,5 +310,102 @@ export async function retryPortalEvent(id: string): Promise<AdminResult> {
 
   await requeueEvent(parsed.data);
   revalidatePath("/admin/agent-portal");
+  return { ok: true };
+}
+
+const collectionSchema = z.object({
+  gcash: z.object({ enabled: z.boolean(), name: z.string().trim().max(120), number: z.string().trim().max(60) }),
+  maya: z.object({ enabled: z.boolean(), name: z.string().trim().max(120), number: z.string().trim().max(60) }),
+  bank: z.object({
+    enabled: z.boolean(),
+    bankName: z.string().trim().max(120),
+    name: z.string().trim().max(120),
+    number: z.string().trim().max(60),
+  }),
+  note: z.string().trim().max(500),
+});
+
+/**
+ * Super-admin: where subscribers send their activation and monthly payments.
+ * Shown to a referred pharmacy once it has signed the service agreement.
+ * Merged into payment_details so an uploaded QR survives an edit of the text.
+ */
+export async function updateCollectionDetails(
+  input: z.input<typeof collectionSchema>,
+): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  const parsed = collectionSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const { gcash, maya, bank, note } = parsed.data;
+
+  const db = createServiceClient();
+  const { data: cur } = await db.from("platform_settings").select("payment_details").maybeSingle();
+  const existing = (cur?.payment_details ?? {}) as Record<string, unknown>;
+
+  const { error } = await db.from("platform_settings").upsert({
+    id: true,
+    updated_at: new Date().toISOString(),
+    payment_details: {
+      ...existing,
+      gcash,
+      maya,
+      bank: { enabled: bank.enabled, bank_name: bank.bankName, name: bank.name, number: bank.number },
+      note,
+    } as Json,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/settings/billing");
+  return { ok: true };
+}
+
+/** Upload the payment QR shown to subscribers. Public bucket — it is a QR to scan. */
+export async function uploadCollectionQr(dataUrl: string): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  if (!dataUrl.startsWith("data:image/")) return { error: "Invalid image" };
+
+  const mime = dataUrl.slice(5, dataUrl.indexOf(";"));
+  const ext = mime.includes("png") ? "png" : mime.includes("svg") ? "svg" : "jpg";
+  const bytes = Buffer.from(dataUrl.split(",")[1] ?? "", "base64");
+  if (bytes.length === 0 || bytes.length > 2_000_000) return { error: "Image too large (max 2MB)" };
+
+  const db = createServiceClient();
+  const path = `platform/collection-qr-${Date.now()}.${ext}`;
+  const { error: upErr } = await db.storage
+    .from("branding")
+    .upload(path, bytes, { contentType: mime, upsert: true });
+  if (upErr) return { error: upErr.message };
+
+  const { data: cur } = await db.from("platform_settings").select("payment_details").maybeSingle();
+  const existing = (cur?.payment_details ?? {}) as Record<string, unknown>;
+  const { error } = await db.from("platform_settings").upsert({
+    id: true,
+    updated_at: new Date().toISOString(),
+    payment_details: { ...existing, qr_path: path } as Json,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/settings/billing");
+  return { ok: true };
+}
+
+export async function removeCollectionQr(): Promise<AdminResult> {
+  await requirePlatformAdmin();
+  const db = createServiceClient();
+  const { data: cur } = await db.from("platform_settings").select("payment_details").maybeSingle();
+  const existing = { ...((cur?.payment_details ?? {}) as Record<string, unknown>) };
+  delete existing.qr_path;
+
+  const { error } = await db.from("platform_settings").upsert({
+    id: true,
+    updated_at: new Date().toISOString(),
+    payment_details: existing as Json,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/payments");
+  revalidatePath("/settings/billing");
   return { ok: true };
 }

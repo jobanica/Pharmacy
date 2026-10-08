@@ -1,6 +1,8 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import { getCustomerTerms } from "@/lib/agent-kit";
+import { portalConfig } from "./config";
 import type { ManualPayment } from "@/lib/supabase/types";
 
 /**
@@ -40,4 +42,26 @@ export async function getManualPayments(): Promise<ManualPayment[]> {
     .order("submitted_at", { ascending: false })
     .limit(50);
   return data ?? [];
+}
+
+/**
+ * What this pharmacy owes, according to the portal.
+ *
+ * The fees come from the commission rule the customer signed up under, so the
+ * portal is the only place that knows them — Reseta must not guess, and must
+ * not store a copy that silently goes stale. Null on any failure: the form
+ * then simply asks for the amount without pre-filling it, which is how it
+ * behaved before.
+ */
+export type PortalFees = { activationCentavos: number | null; monthlyCentavos: number | null };
+
+export async function getPortalFees(organizationId: string): Promise<PortalFees | null> {
+  const config = portalConfig();
+  if (!config) return null;
+  const terms = await getCustomerTerms(config, organizationId);
+  if (!terms?.known) return null;
+  return {
+    activationCentavos: terms.activation_fee,
+    monthlyCentavos: terms.monthly_fee,
+  };
 }

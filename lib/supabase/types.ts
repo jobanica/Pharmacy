@@ -1269,6 +1269,9 @@ export type Database = {
           xendit_webhook_token: string | null
           billing_enabled: boolean
           updated_at: string
+          // Where subscribers send activation / monthly payments. Not secret —
+          // it is printed on the billing page for them to read.
+          payment_details: Json
         }
         Insert: {
           id?: boolean
@@ -1276,6 +1279,7 @@ export type Database = {
           xendit_webhook_token?: string | null
           billing_enabled?: boolean
           updated_at?: string
+          payment_details?: Json
         }
         Update: {
           id?: boolean
@@ -1283,6 +1287,7 @@ export type Database = {
           xendit_webhook_token?: string | null
           billing_enabled?: boolean
           updated_at?: string
+          payment_details?: Json
         }
         Relationships: []
       }

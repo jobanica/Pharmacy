@@ -13,35 +13,49 @@ export type Storefront = {
   bank: BankMethod;
 };
 
-export function storefrontQrUrl(path: string): string {
+/** Public URL for anything in the `branding` bucket (logos, payment QRs). */
+export function brandingPublicUrl(path: string): string {
   return `${publicEnv.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/branding/${path}`;
 }
 
-const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
-const b = (v: unknown): boolean => v === true;
+export function storefrontQrUrl(path: string): string {
+  return brandingPublicUrl(path);
+}
+
+export const s = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
+export const b = (v: unknown): boolean => v === true;
 const n = (v: unknown): number => (typeof v === "number" && v >= 0 ? Math.round(v) : 0);
+
+/** One jsonb `{enabled,name,number}` block → a typed method. */
+export function readPayMethod(v: unknown): PayMethod {
+  const m = (v ?? {}) as Record<string, unknown>;
+  return { enabled: b(m.enabled), name: s(m.name), number: s(m.number) };
+}
+
+/** One jsonb `{enabled,bank_name,name,number}` block → a typed bank method. */
+export function readBankMethod(v: unknown): BankMethod {
+  const m = (v ?? {}) as Record<string, unknown>;
+  return {
+    enabled: b(m.enabled),
+    bankName: s(m.bank_name),
+    name: s(m.name),
+    number: s(m.number),
+  };
+}
 
 /** Parse an organization's jsonb settings into typed storefront config. */
 export function readStorefront(settings: Json | null | undefined): Storefront {
   const root = (settings ?? {}) as { storefront?: Record<string, unknown> };
   const sf = root.storefront ?? {};
-  const gcash = (sf.gcash ?? {}) as Record<string, unknown>;
-  const maya = (sf.maya ?? {}) as Record<string, unknown>;
-  const bank = (sf.bank ?? {}) as Record<string, unknown>;
   const qrPath = s(sf.qr_path) || null;
 
   return {
     deliveryFeeCentavos: n(sf.delivery_fee_centavos),
     qrPath,
-    qrUrl: qrPath ? storefrontQrUrl(qrPath) : null,
-    gcash: { enabled: b(gcash.enabled), name: s(gcash.name), number: s(gcash.number) },
-    maya: { enabled: b(maya.enabled), name: s(maya.name), number: s(maya.number) },
-    bank: {
-      enabled: b(bank.enabled),
-      bankName: s(bank.bank_name),
-      name: s(bank.name),
-      number: s(bank.number),
-    },
+    qrUrl: qrPath ? brandingPublicUrl(qrPath) : null,
+    gcash: readPayMethod(sf.gcash),
+    maya: readPayMethod(sf.maya),
+    bank: readBankMethod(sf.bank),
   };
 }
 

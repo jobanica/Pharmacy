@@ -48,6 +48,9 @@ export function PortalPayments({
   payments,
   activationPaid,
   paidUntil,
+  whereToPay,
+  activationCentavos,
+  monthlyCentavos,
 }: {
   contractStatus: "unsigned" | "signed";
   minimumTermEndsAt: string | null;
@@ -56,6 +59,15 @@ export function PortalPayments({
   activationPaid: boolean;
   /** End of paid coverage from confirmed monthly receipts, ISO or null. */
   paidUntil: string | null;
+  /**
+   * The "where to send it" card, rendered on the server and slotted in here so
+   * it sits between the agreement and the form — the order the owner works in:
+   * sign, scan, pay, upload.
+   */
+  whereToPay?: React.ReactNode;
+  /** Fees from the portal, used to prefill the amount. Null if unknown. */
+  activationCentavos?: number | null;
+  monthlyCentavos?: number | null;
 }) {
   const [pending, start] = React.useTransition();
   const signed = contractStatus === "signed";
@@ -68,6 +80,8 @@ export function PortalPayments({
     paidUntil ? new Date(paidUntil) : null,
     new Date(),
   );
+  const dueCentavos =
+    (type === "activation" ? activationCentavos : monthlyCentavos) ?? null;
 
   function sign() {
     start(async () => {
@@ -121,6 +135,8 @@ export function PortalPayments({
           </CardContent>
         ) : null}
       </Card>
+
+      {signed ? whereToPay : null}
 
       <Card>
         <CardHeader>
@@ -221,7 +237,19 @@ export function PortalPayments({
 
               <div className="grid gap-2">
                 <Label htmlFor="amount">Amount paid (₱)</Label>
-                <Input id="amount" name="amount" inputMode="decimal" placeholder="800" required />
+                <Input
+                  id="amount"
+                  name="amount"
+                  inputMode="decimal"
+                  // Prefilled with what the portal says this pharmacy owes, and
+                  // still editable — they type what they actually sent.
+                  key={type}
+                  defaultValue={
+                    dueCentavos !== null ? (dueCentavos / 100).toFixed(2) : undefined
+                  }
+                  placeholder="800"
+                  required
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="bank_reference">Bank reference number</Label>
