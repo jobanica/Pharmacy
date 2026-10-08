@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { QrCode } from "lucide-react";
 
 import {
@@ -64,13 +63,13 @@ export function WhereToPay({
       </CardHeader>
       <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-start">
         {details.qrUrl ? (
-          <Image
+          // A plain <img>, like the storefront QR: the bucket's host is not in
+          // images.remotePatterns, and a payment QR must not be re-encoded.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={details.qrUrl}
             alt="Payment QR code"
-            width={200}
-            height={200}
-            unoptimized
-            className="shrink-0 self-center rounded-xl border bg-white p-3 sm:self-start"
+            className="size-52 shrink-0 self-center rounded-xl border bg-white object-contain p-3 sm:self-start"
           />
         ) : null}
         <div className="grid flex-1 gap-3 text-sm">

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { Loader2, QrCode, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -104,13 +103,11 @@ export function CollectionSettings({ details }: { details: CollectionDetails }) 
           <Label>Payment QR</Label>
           {details.qrUrl ? (
             <div className="flex items-start gap-4">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={details.qrUrl}
                 alt="Payment QR"
-                width={160}
-                height={160}
-                unoptimized
-                className="rounded-lg border bg-white p-2"
+                className="size-40 rounded-lg border bg-white object-contain p-2"
               />
               <Button variant="outline" size="sm" disabled={pending} onClick={dropQr}>
                 <Trash2 className="size-4" />
